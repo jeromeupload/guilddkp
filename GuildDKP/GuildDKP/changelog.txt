@@ -1,0 +1,224 @@
+﻿
+Release 1.5.0 (2015-05-21)
+--------------------------
+* Added: Add, Subtract and Penalty (subtract percent) DKP to context menu's.
+* Added: Error message if using popup menus while not in raid
+* Bugfix: "/gdundo" and "/gdredo" is not setting STATE property correct, meaning transactions can be undone infinite - fixed
+* Bugfix: Command names made unique to avoid collision with other addons.
+* Bugfix: "/gdversion" required you to be in a raid - fixed.
+* Update: "/checkversion" renamed to "/gdcheckversion" avoid collision with other addons. "/gdversion" still works.
+* Update: Minor design changes, with inspiration to my Thaliz addon.
+
+
+Release 1.4.1
+-------------
+* Bugfix: Fixed typo in "/gddkplength" syntax message.
+* Bugfix: SavedVariables was not handled (read) correct.
+
+
+Release 1.4.0
+-------------
+* Added: /checkversion - will ask all clients in raid about their GuildDKP version. Only works in raids.
+* Added: Transactions are now broadcasted to other clients, so they can view transaction history.
+* Update: "/rangecheck" changed name to "/checkrange" to align with other /check... functions.
+* Update: "/rangecheck raid" will now display the names of people not in range in raid chat.
+* Update: "/gddecay" messages in GChat has been updated.
+* Update: "/gdstat" renamed to "/gddkp", "/dkp" added as convenience method.
+* Removed: "/gdclean" was removed, this does not make sense after synchronization was added.
+* Removed: "/gdplusrw" - all operations now write to raid. This cannot be overruled.
+* Bugfix: "/sharerange" did not create a transaction - fixed!
+
+
+Release 1.3.2
+-------------
+* Update: "/checkcombat raid" does no longer tell people to relog (alt+f4), but only broadcasts who are in combat.
+* Update: "/checkcombat raid" with no players in combat will now display that message in raid chat.
+
+
+Release 1.3.1
+-------------
+* Bugfix: When addon is used together with ArchiTotem addon ArchiTotem spams lots of text - fixed.
+
+
+Release 1.3.0
+-------------
+* Added: transactions and transaction log.
+* Added: /gdlog [<transactionid>] - display transactions from <id>, or last 5 transactions
+* Added: /gdlogdetails <transactionID> - display transaction details for transaction <id>
+* Added: /gdpostlog <transactionID> - display transaction details for transaction <id> in guild chat
+* Added: /gdundo <transaction id> - Undo (rollback) specific transaction.
+* Added: /gdredo <transaction id> - Redo (cancel rollback) specific transaction.
+* Added: /gdinclude - add a player to a transaction (i.e. an /addrange transaction)
+* Added: /gdexclude - Remove a player from a multiplayer transaction
+* Added: /gdcleanlog - clean (empty) the transaction log.
+* Bugfix: DKP can go in negative now.
+
+
+Release 1.2.2
+-------------
+* Added: /gdminuspct <name> <percent> -- subtract <percent>% DKP from <name>, or a minimum of 50 DKP, and announce in raid.
+* Removed: /gdshowoffliners - the use of this command was potentionally dangerous!
+
+
+Release 1.2.1
+-------------
+* Added: /gdsubtractraid [dkp] -- subtract <dkp> DKP from all members in the raid
+* Bugfix: /gdrangecheck was not mapped correct, leaving the function useless - fixed
+
+
+Release 1.2.0
+-------------
+* Added: /gdcombat [channel] -- Write a list of players currently in combat.
+* Added: /gddecay <percent> -- withdraw <percent>% DKP from all guild members
+* Added: /gdminusrw <name> <dkp> -- Subtract <dkp> from <name> and announce in /RW
+* Added: /gdplusrw <name> <dkp> -- Add <dkp> to <name> and announce in /RW
+* Added: /gdshareraid -- Add dkp, giving each member a share of the DKP.
+* Added: /gdsharerange -- Add dkp, giving each member in range a share of the DKP.
+* Added: /gdshowoffliners -- Enable offline guild members in guild roster.
+* Renamed: /gdraidplus renamed to /gdaddraid
+* Renamed: /gdrangeplus renamed to /gdaddrange
+* Removed: /gdload -- obsolete function to reload the guild roster.
+* /gdclass does no longer require you to be in a raid to use.
+* /gdclass will now also show DKP for offline players.
+* /gdclass will now default to the players class.
+* /gdclass is now limited to the top 10 DKP players of the specified class.
+* /gdstat does no longer require you to be in a raid to use.
+* /gdstat will now also show DKP for offline players.
+* /gdstat will now default to the players.
+* Bugfix: Only the initial GuildDKP message was coloured correct - fixed.
+
+
+New commands in 1.2.x:
+
+/gdcombat [channel]
+/checkcombat [channel]
+Output the name of all raid players in combat. This is used to spot eventual
+combat bugged players.
+If "Raid" is passed as parameter, the message will be displayed in Raid chat,
+together with a message telling the user to relog ASAP.
+If no parameter is given, the output is displayed locally.
+
+/gddecay <percent>
+Each guild members DKP will be reduced by <percent>%. The reduction will always
+be rounded down, so for example a reduction of 2.5 DKP will effectively only
+reduce 2 DKP from the player.
+A message will be written in Guild chat when the reduction is done.
+Additionally a message will be displayed locally with the number of players
+with a DKP reduction plus the total amount of DKP reducted.
+
+/gdplusrw <player> <amount>
+Add <amount> DKP to the player <player>.
+A raid warning will be displayed when operation has been performed.
+
+/gdminusrw <player> <amount>
+Subtract <amount> DKP from the guild player <player>. The DKP may go in minus!
+A raid warning will be displayed when operation has been performed.
+
+/gdminuspct <player> <percent>
+Subtract <percent> % DKP from the guild player <player>.
+A minimum of 50 DKP will be deducted, although the final result cannot go into minus.
+A raid warning will be displayed when operation has been performed.
+
+
+
+Updated commands:
+
+/gdclass [class]
+List the DKP for the specified class (Priest, Hunter ...).
+If no class is given, the player's class is used.
+
+/gdstat [player]
+Display the DKP earned by the specific player.
+If no player name is given, the current player is used.
+
+/gdraidplus
+Renamed to /gdaddraid
+
+/gdrangeadd
+Renamed to /gdaddrange
+
+
+
+
+Release 1.1.1
+-------------
+* Added: Option to zero-pad DKP so DKP field is always same size (length)
+* Added: /gdconfig -- display current configuration settings.
+* Added: /gddebug <debug level> -- set debug level. "0" disables debugging (default)
+* Added: /gddkplength <length> -- Configure the DKP length setting
+* Added: /gdhelp -- display command options
+
+New commands in 1.1.1:
+
+/gdconfig
+Display the current configuration settings.
+
+/gddebug <debug level>
+Internal function: set the internal debug level. Default is "0" (disabled)
+
+/gddkplength <length>
+/dkplength <length>
+Set the length of the DKP string, so you can create a DKP string of a fixed length.
+Example: "/dkplength 6" will make DKP entries look like "<005015>".
+Note: DKP entries are not updated until a change is actually made to the user(s) DKP.
+
+/gdhelp
+Displays the commands available for GuildDKP plus the current GuildDKP version.
+
+
+
+
+Release 1.1.0
+-------------
+* Added: /gdrangeadd <amount> - add <amount> DKP to all raid members within 100 yards.
+* Added: /gdrangecheck - show all persons not currently within a 100 yard range.
+* Bugfix: GdClass did not check the class type - fixed.
+* Bugfix: Version number caused a lua error - fixed.
+
+New commands in 1.1.0:
+/gdrangeadd <amount>
+/rangeadd <amount>
+Add <amount> DKP to all players in range (within 100 yards).
+Offliners and people further away than 100 yards will not receive DKP.
+
+/gdrangecheck
+/rangecheck
+Check who is outside DKP range.
+List all players not within 100 yards or is disconnected.
+
+
+
+
+Release 1.0.0
+-------------
+Initial release of GuildDKP, introducing the following commands:
+
+/gdstat <player>
+List DKP fo a specific player
+
+/gdclass <class>
+List DKP for all characters of the selected class, ordered by their DKP.
+
+/gdplus <player> <amount>
+/gdp <player> <amount>
+Add <amount> DKP to the player <player>.
+A confirmation will be written locally when operation is performed.
+
+/gdminus <player> <amount>
+/gdm <player> <amount>
+Subtract <amount> DKP from the guild player <player>. The DKP may go in minus!
+A confirmation will be written locally when operation is performed.
+
+/gdraidplus <amount>
+/raidplus <amount>
+Add <amount> DKP to all players in the raid.
+
+/gdload
+Used to force a reload of the guild roster.
+
+/gdtest
+Internal test function: display the internal raid roster map.
+
+
+Note that the above commands only works on players in the raid and in the same guild as the one operating GuildDKP.
+

@@ -1,0 +1,8 @@
+## Title: GuildDKP - guild DKP manager
+## Notes: Manage DKP distribution for guild members.
+## Version: 1.5.0
+## Author: Mimma @ VanillaGaming.org
+## Interface: 11200
+## SavedVariables: GDKP_DebugLevel, GDKP_DkpStringLength
+## Dependencies:
+GuildDKP.xml
