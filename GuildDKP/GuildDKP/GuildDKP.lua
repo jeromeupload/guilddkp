@@ -2481,7 +2481,7 @@ function GuildDKP_OnLoad(self)
 	GuildDKP_addDropDownMenuButton("PlusDKPParty", "PARTY", 1, "Add DKP", GuildDKP_ValidForMenu, GuildDKP_AddDKPFromMenu);
 	GuildDKP_addDropDownMenuButton("MinusDKPParty", "PARTY", 1, "Subtract DKP", GuildDKP_ValidForMenu, GuildDKP_SubtractDKPFromMenu);
 
-	--	This line seperates DKP options with remaining options.
+	--	This line separates DKP options with remaining options.
 	--	Next option is REMOVE (from raid), we should not click this by accident!
 	GuildDKP_addDropDownMenuButton("DKPSplitter", "RAID", 1, "--------------------", GuildDKP_ValidForMenu, nil);
 	GuildDKP_addDropDownMenuButton("PercentDKPRaid", "RAID", 1, "Penalty DKP", GuildDKP_ValidForMenu, GuildDKP_SubtractPercentFromMenu);
@@ -2529,7 +2529,7 @@ function OnChatMsgAddon(event, prefix, msg, channel, sender)
 			return	-- cmd is mandatory, remaining parameters are optionel.
 		end
 
-		--	Ignore message if it is not for me. Receipient can be blank, which means it is for everyone.
+		--	Ignore message if it is not for me. Recipient can be blank, which means it is for everyone.
 		if not (recipient == "") then
 			if not (recipient == UnitName("player")) then
 				return
