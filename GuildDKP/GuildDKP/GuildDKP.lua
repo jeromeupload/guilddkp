@@ -369,7 +369,7 @@ end
 function GDShareRaid_callback(job)
 	local dkp = job[2]
 	
-	local members = GetNumRaidMembers()
+	local members = GetNumGroupMembers()
 	if(members > 0) then
 		local sharedDkp = ceil(dkp / members)
 	
@@ -812,7 +812,7 @@ end
 	Add DKP to all (online) guilded raid members.
 ]]
 function addRaidDKP(dkp, description)
-	local playerCount = GetNumRaidMembers()
+	local playerCount = GetNumGroupMembers()
 		
 	if playerCount then
 		local tidIndex = 1
@@ -835,7 +835,7 @@ end
 	Subtract DKP from all (online) guilded raid members.
 ]]
 function subtractRaidDKP(dkp, description)
-	local playerCount = GetNumRaidMembers()
+	local playerCount = GetNumGroupMembers()
 	
 	if playerCount then
 		local tidIndex = 1
@@ -1248,7 +1248,7 @@ end
 	Should be called after each roster update.
 ]]
 function refreshRaidRoster()
-	local playerCount = GetNumRaidMembers()
+	local playerCount = GetNumGroupMembers()
 	
 	if playerCount then
 		--	name, rank, rankIndex, level, class, zone, note, officernote
@@ -1411,7 +1411,7 @@ function canWriteOfficerNotes()
 end
 
 function isInRaid(silentMode)
-	local result = ( GetNumRaidMembers() > 0 )
+	local result = ( GetNumGroupMembers() > 0 )
 	if not silentMode and not result then
 		GuildDKP_Echo("You must be in a raid!")
 	end
