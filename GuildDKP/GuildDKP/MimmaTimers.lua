@@ -12,7 +12,7 @@ local mimmaTimers = {}
 local mimmaTimerTick = 0
 
 
-function OnMimmaTimer(elapsed)
+function OnMimmaTimer(self, elapsed)
 	mimmaTimerTick = mimmaTimerTick + elapsed
 
 	for n=1,table.getn(mimmaTimers),1 do

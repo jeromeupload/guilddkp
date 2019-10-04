@@ -14,9 +14,7 @@
 					GuildDKP_OnEvent(event);
 				end
 			</OnEvent>
-			<OnUpdate>
-				OnMimmaTimer(arg1)
-			</OnUpdate>
+			<OnUpdate function="OnMimmaTimer" />
 		</Scripts>
 	</Frame>
 </Ui>
