@@ -2349,15 +2349,15 @@ function GuildDKP_AddDKPFromMenu()
 			timeout = 0,
 			maxLetters = 6,
 			OnShow = function()	
-				local c = getglobal(this:GetName().."EditBox");
+				local c = getglobal(self:GetName().."EditBox");
 				c:SetText("");
 			end,
 			EditBoxOnEnterPressed = function()
-				this:GetParent():Hide();
-				GuildDKP_DoAddDKPFromMenu(UnitName(frame.unit), this:GetText());
+				self:GetParent():Hide();
+				GuildDKP_DoAddDKPFromMenu(UnitName(frame.unit), self:GetText());
 			end,
 			OnAccept = function(self, data)
-				local c = getglobal(this:GetParent():GetName().."EditBox");		
+				local c = getglobal(self:GetParent():GetName().."EditBox");		
 				GuildDKP_DoAddDKPFromMenu(UnitName(frame.unit), c:GetText());
 			end
 		}
@@ -2390,15 +2390,15 @@ function GuildDKP_SubtractDKPFromMenu()
 			timeout = 0,
 			maxLetters = 6,
 			OnShow = function()	
-				local c = getglobal(this:GetName().."EditBox");
+				local c = getglobal(self:GetName().."EditBox");
 				c:SetText("");
 			end,
 			EditBoxOnEnterPressed = function()
-				this:GetParent():Hide();
-				GuildDKP_DoSubtractDKPFromMenu(UnitName(frame.unit), this:GetText());
+				self:GetParent():Hide();
+				GuildDKP_DoSubtractDKPFromMenu(UnitName(frame.unit), self:GetText());
 			end,
 			OnAccept = function(self, data)
-				local c = getglobal(this:GetParent():GetName().."EditBox");
+				local c = getglobal(self:GetParent():GetName().."EditBox");
 				GuildDKP_DoSubtractDKPFromMenu(UnitName(frame.unit), c:GetText());
 			end
 		}
@@ -2431,15 +2431,15 @@ function GuildDKP_SubtractPercentFromMenu()
 			timeout = 0,
 			maxLetters = 2,
 			OnShow = function()	
-				local c = getglobal(this:GetName().."EditBox");
+				local c = getglobal(self:GetName().."EditBox");
 				c:SetText("");
 			end,
 			EditBoxOnEnterPressed = function()
-				this:GetParent():Hide();
-				GuildDKP_DoSubtractPercentFromMenu(UnitName(frame.unit), this:GetText());
+				self:GetParent():Hide();
+				GuildDKP_DoSubtractPercentFromMenu(UnitName(frame.unit), self:GetText());
 			end,
 			OnAccept = function(self, data)
-				local c = getglobal(this:GetParent():GetName().."EditBox");
+				local c = getglobal(self:GetParent():GetName().."EditBox");
 				GuildDKP_DoSubtractPercentFromMenu(UnitName(frame.unit), c:GetText());
 			end
 		}
@@ -2469,9 +2469,9 @@ end
 function GuildDKP_OnLoad()
 	GuildDKP_Echo("GuildDKP version " .. GetAddOnMetadata("GuildDKP", "Version") .. " by ".. GetAddOnMetadata("GuildDKP", "Author"))
 
-    this:RegisterEvent("GUILD_ROSTER_UPDATE")
-    this:RegisterEvent("CHAT_MSG_ADDON")
-    this:RegisterEvent("RAID_ROSTER_UPDATE")
+    self:RegisterEvent("GUILD_ROSTER_UPDATE")
+    self:RegisterEvent("CHAT_MSG_ADDON")
+    self:RegisterEvent("RAID_ROSTER_UPDATE")
     
     -- If GuildDKP_addDropDownMenuButton could just accept functions and not a boolean - grrrr!
     -- Now we have to either ENABLE or DISABLE buttons all time, not only when in raid.
