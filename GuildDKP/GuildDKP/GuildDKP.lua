@@ -2335,7 +2335,7 @@ UIDropDownMenu_AddButton = function(info, level)
 end;
 
 
-function GuildDKP_AddDKPFromMenu()
+function GuildDKP_AddDKPFromMenu(self)
 	local frame = getglobal(UIDROPDOWNMENU_OPEN_MENU);
 
 	if isInRaid(false) then
@@ -2376,7 +2376,7 @@ function GuildDKP_DoAddDKPFromMenu(name, dkp)
 	end
 end
 
-function GuildDKP_SubtractDKPFromMenu()
+function GuildDKP_SubtractDKPFromMenu(self)
 	local frame = getglobal(UIDROPDOWNMENU_OPEN_MENU);
 
 	if isInRaid(false) then
@@ -2417,7 +2417,7 @@ function GuildDKP_DoSubtractDKPFromMenu(name, dkp)
 	end
 end
 
-function GuildDKP_SubtractPercentFromMenu()
+function GuildDKP_SubtractPercentFromMenu(self)
 	local frame = getglobal(UIDROPDOWNMENU_OPEN_MENU);
 	
 	if isInRaid(false) then
@@ -2466,10 +2466,10 @@ end
 --
 --  *******************************************************
 
-function GuildDKP_OnLoad()
+function GuildDKP_OnLoad(self)
 	GuildDKP_Echo("GuildDKP version " .. GetAddOnMetadata("GuildDKP", "Version") .. " by ".. GetAddOnMetadata("GuildDKP", "Author"))
 
-    self:RegisterEvent("GUILD_ROSTER_UPDATE")
+    self:RegisterEvent("GUILD_ROSTER_UPDATE") 
     self:RegisterEvent("CHAT_MSG_ADDON")
     self:RegisterEvent("RAID_ROSTER_UPDATE")
     
