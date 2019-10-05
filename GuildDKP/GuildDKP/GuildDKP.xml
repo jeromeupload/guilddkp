@@ -6,7 +6,7 @@
 		<Scripts>
 			<OnLoad>
 				if (GuildDKP_OnLoad) then
-					GuildDKP_OnLoad();
+					GuildDKP_OnLoad(self);
 				end
 			</OnLoad>
 			<OnEvent>
