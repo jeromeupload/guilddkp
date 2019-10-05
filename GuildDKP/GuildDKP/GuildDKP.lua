@@ -754,7 +754,7 @@ SlashCmdList["GUILDDKP_CHECKVERSION"] = function()
 	local message = nil
 	
 	if isInRaid(true) then
-		SendAddonMessage(GUILDDKP_PREFIX, "TX_VERSION##", "RAID")
+		C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "TX_VERSION##", "RAID")
 	else
 		GuildDKP_Echo( string.format("%s is using GuildDKP version %s", UnitName("player"), GetAddOnMetadata("GuildDKP", "Version")) );
 	end
@@ -918,7 +918,11 @@ function getDKP(receiver)
 	local dkpValue = 0
 
 	for n=1,memberCount,1 do
-		name, _, _, _, _, _, publicNote, officerNote = GetGuildRosterInfo(n)
+		local player, _, _, _, _, _, publicNote, officerNote = GetGuildRosterInfo(n)
+        local name = ""
+        local realm = ""
+        name, realm = player:match("([^,]+)%-([^,]+)")
+
 		local note = publicNote
 		if name == receiver then
 			if useOfficerNotes then
@@ -946,7 +950,11 @@ function applyDKP(receiver, dkpValue)
 	local memberCount = GetNumGuildMembers()
 
 	for n=1,memberCount,1 do
-		name, _, _, _, _, _, publicNote, officerNote = GetGuildRosterInfo(n)
+		local player, _, _, _, _, _, publicNote, officerNote = GetGuildRosterInfo(n)
+        local name = ""
+        local realm = ""
+        name, realm = player:match("([^,]+)%-([^,]+)")
+
 		local note = publicNote
 		if name == receiver then
 			if useOfficerNotes then
@@ -1220,12 +1228,15 @@ function refreshGuildRoster()
 	local note
 	local index = 1	
 	for m=1,memberCount,1 do
-		local name, _, _, _, class, _, publicnote, officernote, online = GetGuildRosterInfo(m)
+		local player, _, _, _, _, _, publicNote, officerNote = GetGuildRosterInfo(m)
+        local name = ""
+        local realm = ""
+        name, realm = player:match("([^,]+)%-([^,]+)")
 
 		if useOfficerNotes then		
-			note = officernote
+			note = officerNote
 		else
-			note = publicnote
+			note = publicNote
 		end
 		
 		if not note or note == "" then
@@ -1258,12 +1269,16 @@ function refreshRaidRoster()
 		--	Loop over all _online_ players
 		local index = 0
 		for m=1,memberCount,1 do
-			local name, _, _, _, class, _, publicnote, officernote, online = GetGuildRosterInfo(m)				
+			local player, _, _, _, class, _, publicNote, officerNote, online = GetGuildRosterInfo(m)
+            local name = ""
+            local realm = ""
+            name, realm = player:match("([^,]+)%-([^,]+)")
+
 			index = index + 1
 			if useOfficerNotes then
-				members[index] = { name, officernote, class, online }
+				members[index] = { name, officerNote, class, online }
 			else
-				members[index] = { name, publicnote, class, online }
+				members[index] = { name, officerNote, class, online }
 			end
 		end
 
@@ -1366,18 +1381,18 @@ end
 
 function canReadNotes()
 	if useOfficerNotes then
-		result = canReadOfficerNotes()
+		local result = canReadOfficerNotes()
 	else
-		result = canReadGuildNotes()
+		local result = canReadGuildNotes()
 	end
 	return result
 end
 
 function canWriteNotes()
 	if useOfficerNotes then
-		result = canWriteOfficerNotes()
+		local result = canWriteOfficerNotes()
 	else
-		result = canWriteGuildNotes()
+		local result = canWriteGuildNotes()
 	end
 	return result
 end
@@ -1602,7 +1617,7 @@ function broadcastTransaction(transaction)
 
 			--	TID plus NAME combo is unique.
 			payload = timestamp .."/".. tid .."/".. author .."/".. description .."/".. transstate .."/".. name .."/".. dkp
-			SendAddonMessage(GUILDDKP_PREFIX, "TX_UPDATE#"..payload.."#", "RAID")
+			C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "TX_UPDATE#"..payload.."#", "RAID")
 		end
 	end
 end
@@ -2046,7 +2061,7 @@ function synchronizeTransactionLog()
 	
 	synchronizationState = 1	-- Step 1: Initialize
 	
-	SendAddonMessage(GUILDDKP_PREFIX, "TX_SYNCINIT##", "RAID")
+	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "TX_SYNCINIT##", "RAID")
 	
 	--GuildDKP_AddTimer(HandleRXSyncInitDone, 3)	
 	AddMimmaTimer(HandleRXSyncInitDone, 3)	
@@ -2106,7 +2121,7 @@ end
 local function HandleTXVersion(message, sender)
 	local response = GetAddOnMetadata("GuildDKP", "Version")
 	
-	SendAddonMessage(GUILDDKP_PREFIX, "RX_VERSION#"..response.."#"..sender, "RAID")
+	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "RX_VERSION#"..response.."#"..sender, "RAID")
 end
 
 --[[
@@ -2160,7 +2175,7 @@ function HandleTXSyncInit(message, sender)
 	end
 
 	syncResults = {}
-	SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCINIT#"..currentTransactionID.."#"..sender, "RAID")
+	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCINIT#"..currentTransactionID.."#"..sender, "RAID")
 end
 
 
@@ -2203,7 +2218,7 @@ function HandleRXSyncInitDone()
 	end
 
 	--	Now request transaction synchronization from selected target
-	SendAddonMessage(GUILDDKP_PREFIX, "TX_SYNCTRAC##"..maxName, "RAID")	
+	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "TX_SYNCTRAC##"..maxName, "RAID")	
 end
 
 
@@ -2227,12 +2242,12 @@ function HandleTXSyncTransaction(message, sender)
 			
 			local response = timestamp.."/"..tid.."/"..author.."/"..desc.."/"..state.."/"..name.."/"..dkp
 			
-			SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCTRAC#"..response.."#"..sender, "RAID")				
+			C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCTRAC#"..response.."#"..sender, "RAID")				
 		end
 	end
 	
 	--	Last, send an EOF to signal all transactions were sent.
-	SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCTRAC#EOF#"..sender, "RAID")				
+	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCTRAC#EOF#"..sender, "RAID")				
 end
 
 
