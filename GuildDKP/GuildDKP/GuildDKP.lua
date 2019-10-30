@@ -76,28 +76,10 @@ SLASH_GUILDDKP_STATUS_DKP1 = "/gddkp"
 SLASH_GUILDDKP_STATUS_DKP2 = "/dkp"
 SlashCmdList["GUILDDKP_STATUS_DKP"] = function(msg)
 	local _, _, name = string.find(msg, "(%S*).*")
-
-	if canReadNotes() then	
-		if not name or name == "" then
-			name = UnitName("player")
-		end
-	
-		if isInRaid(true) then
-			if table.getn(raidRoster) > 0 then
-				displayDKPForRaidingPlayer(name)
-			else
-				AddJob( function(job) displayDKPForRaidingPlayer(job[2]) end, name, "_" )
-				requestUpdateRoster()
-			end
-		else
-			if table.getn(guildRoster) > 0 then
-				displayDKPForGuildedPlayer(name)
-			else
-				AddJob( function(job) displayDKPForGuildedPlayer(job[2]) end, name, "_" )
-				requestUpdateRoster()   
-			end
-		end
-    end
+	if not name or name == "" then
+		name = UnitName("player")
+	end
+	displayDKPForGuildedPlayer(name)
 end
 
 
@@ -922,6 +904,7 @@ function getDKP(receiver)
         local name = ""
         local realm = ""
         name, realm = player:match("([^,]+)%-([^,]+)")
+		GuildDKP_Echo( string.format("%s - %s : %s", name, realm, receiver))
 
 		local note = publicNote
 		if name == receiver then
@@ -1062,11 +1045,8 @@ end
 	Display DKP amount for a specific player (locally) in the guild
 ]]
 function displayDKPForGuildedPlayer(receiver)
-	receiver = UCFirst(receiver)
-	local player = getGuildPlayer(receiver)
-	
+	local player, dkp, class = getGuildPlayer(receiver)
 	if player then
-		local dkp = player[2]	
 		if dkp then
 			GuildDKP_Echo(receiver.." currently has "..dkp.." DKP.")
 		else
@@ -1310,12 +1290,11 @@ end
 ]]
 function getRaidPlayer(receiver)
 	for n=1, table.getn(raidRoster),1 do
-		local player = raidRoster[n]
-		local name = player[1]
-		local dkp = player[2]
-		local class = player[3]
-		local online = player[4]
-		
+		local player, _, _, _, class, _, publicNote, officerNote, online = GetGuildRosterInfo(n)
+		local name = ""
+		local realm = ""
+		name, realm = player:match("([^,]+)%-([^,]+)")
+
 		if name == receiver then
 			return { name, dkp, class, online }
 		end
@@ -1330,14 +1309,15 @@ end
 	Output: DKP value, or nil if player was not found.
 ]]
 function getGuildPlayer(receiver)
-	for n=1, table.getn(guildRoster),1 do
-		local player = guildRoster[n]
-		local name = player[1]
-		local dkp = player[2]
-		local class = player[3]
+	for n=1, GetNumGuildMembers(),1 do
+		local player, _, _, _, class, _, publicNote, officerNote, online = GetGuildRosterInfo(n)
+		local _, _, dkp = string.find(officerNote, "<(-?%d*)>")
+		local name = ""
+		local realm = ""
+		name, realm = player:match("([^,]+)%-([^,]+)")
 		
 		if name == receiver then
-			return { name, dkp, class }
+			return name, dkp, class
 		end
 	end
 	return nil
@@ -1402,11 +1382,12 @@ function canReadGuildNotes()
 end
 
 function canReadOfficerNotes()
-	local result = CanViewOfficerNote()
-	if not result then
-		GuildDKP_Echo("Sorry, but you do not have access to read officer notes.")
-	end
-	return result
+	--local result = CanViewOfficerNote()
+	--GuildDKP_Echo("%s", CanViewOfficerNote())
+	--if not CanViewOfficerNote() then
+	--	GuildDKP_Echo("Sorry, but you do not have access to read officer notes.")
+	--end
+	return true
 end
 
 function canWriteGuildNotes()
