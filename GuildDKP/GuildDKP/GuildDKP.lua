@@ -59,15 +59,6 @@ local synchronizationState = 0
 --	Hold RX_SYNCINIT responses when querying for a client to sync.
 local syncResults = {}
 
-
-
-
---  *******************************************************
---
---	Slash commands
---
---  *******************************************************
-
 --[[
 	Display DKP for a specific user, or current user if no playername was given.
 	Syntax: /gddkp [<player>]
@@ -81,8 +72,6 @@ SlashCmdList["GUILDDKP_STATUS_DKP"] = function(msg)
 	end
 	displayDKPForGuildedPlayer(name)
 end
-
-
 
 --[[
 	Display DKP values for all of a certain class
