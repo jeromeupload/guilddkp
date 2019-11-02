@@ -10,7 +10,6 @@
 GDKP_DebugLevel = 0
 GDKP_DkpStringLength = 0
 
-
 -- Use Officer notes (true) or Public notes (false)
 local useOfficerNotes = true
 -- Max number of players shown in /gdclass output; used to stop spam when displaying guild top X
@@ -111,8 +110,6 @@ SlashCmdList["GUILDDKP_CLASS"] = function(msg)
 	end
 end
 
-
-
 --[[
 	Add DKP to a specific char and announce in /RW
 	Syntax: /gdplus <player> <dkp value>
@@ -142,8 +139,6 @@ function GDPlus_callback(job)
 	end
 end
 
-
-
 --[[
 	Remove DKP from a specific char and announce in /RW
 	Syntax: /gdminus <player> <dkp value>
@@ -172,49 +167,6 @@ function GDMinus_callback(job)
 		SendChatMessage(dkp.." DKP was subtracted from "..name..".", RAID_CHANNEL)
 	end
 end
- 
-
-
---[[
-	Remove % DKP from a specific char and announce in Raid Warning.
-	A minimum of 50 DKP is withdrawn.
-	Syntax: /gdminuspct <player> <percent>
-]]
-SLASH_GUILDDKP_MINUS_PERCENT1 = "/gdminuspct"
-SLASH_GUILDDKP_MINUS_PERCENT2 = "/minuspct"
-SlashCmdList["GUILDDKP_MINUS_PERCENT"] = function(msg)
-	local _, _, name, pct = string.find(msg, "(%S*)%s*(%d*).*")
-
-	if isInRaid() and canWriteNotes() then
-		if pct and name and tonumber(pct) then
-			AddJob( GDMinusPercent_callback, name, pct )
-			requestUpdateRoster()
-		else
-			GuildDKP_Echo("Syntax: /gdminuspct <name> <percent>")
-		end
-	end    
-end
-
-function GDMinusPercent_callback(job)
-	local name = UCFirst(job[2])
-	local pct = job[3]
-
-	local dkp = getDKP(name)
-	if tonumber(dkp) then
-		local amount = floor(dkp * pct / 100)
-		if amount < 50 then
-			amount = 50
-		end
-		if applyDKP(name, (-1 * amount)) then
-			logSingleTransaction("GDMinusPct", name, (-1 * amount))
-			SendChatMessage(amount.." DKP (".. pct.."%) was subtracted from "..name..".", RAID_CHANNEL)
-		end	
-	else
-	   	GuildDKP_Echo(name.." was not found in the guild; DKP was not updated.")
-	end
-end
-
-
 
 --[[
 	Add DKP to all guild members in the current raid.
@@ -241,8 +193,6 @@ function GDAddRaid_callback(job)
 	SendChatMessage(dkp.." DKP has been added to all players in raid.", RAID_CHANNEL)
 end
 
-
-
 --[[
 	Subtract DKP from all guild members in the current raid.
 	Syntax: /gdsubtractraid <dkp value>
@@ -268,161 +218,6 @@ function GDSubtractRaid_callback(job)
 	SendChatMessage(dkp.." DKP has been subtracted from all players in raid.", RAID_CHANNEL)
 end
 
-
-
---[[
-	Add DKP to all people in range (100 yards)
-	Syntax: /gdaddrange
-]]
-SLASH_GUILDDKP_ADD_RANGE1 = "/gdaddrange"
-SLASH_GUILDDKP_ADD_RANGE2 = "/addrange"
-SlashCmdList["GUILDDKP_ADD_RANGE"] = function(msg)
-	local _, _, dkp = string.find(msg, "(%d*).*")
-
-	if isInRaid() and canWriteNotes() then
-		if dkp and tonumber(dkp) then
-			AddJob( GDAddRange_callback, dkp, "_" )
-			requestUpdateRoster()
-		else
-			GuildDKP_Echo("Syntax: /gdaddrange <dkp value>")
-		end
-	end
-end
-
-function GDAddRange_callback(job)
-	local dkp = job[2]
-	local updateCount = 0
-
-	local tidIndex = 1
-	local tidChanges = {}
-	
-	for n=1, 40, 1 do
-		local unitid = "raid"..n
-		local player = UnitName(unitid)
-		local isOnline = UnitIsConnected(unitid)
-
-		if player then		
-			if isOnline and UnitIsVisible(unitid) then
-				updateCount = updateCount + 1
-				applyDKP(player, dkp)
-				
-				tidChanges[tidIndex] = { player, dkp }
-				tidIndex = tidIndex + 1				
-			end
-		end
-	end
-	
-	logMultipleTransactions("GDAddRange", tidChanges)
-	SendChatMessage(dkp.." DKP has been added for "..updateCount.." players in range.", RAID_CHANNEL)
-end
-
-
-
---[[
-	Share DKP to all guild members in the current raid.
-	Syntax: /gdshareraid <dkp value>
-]]
-SLASH_GUILDDKP_SHARE_RAID1 = "/gdshareraid"
-SLASH_GUILDDKP_SHARE_RAID2 = "/shareraid"
-SlashCmdList["GUILDDKP_SHARE_RAID"] = function(msg)
-	local _, _, dkp = string.find(msg, "(%d*).*")
-
-	if isInRaid() and canWriteNotes() then
-		if dkp and tonumber(dkp) then
-			AddJob( GDShareRaid_callback, dkp, "_" )
-			requestUpdateRoster()
-		else
-			GuildDKP_Echo("Syntax: /gdshareraid <dkp>")
-		end
-	end    
-end
-
-function GDShareRaid_callback(job)
-	local dkp = job[2]
-	
-	local members = GetNumGroupMembers()
-	if(members > 0) then
-		local sharedDkp = ceil(dkp / members)
-	
-		addRaidDKP(sharedDkp, "GDShareRaid")
-		SendChatMessage(dkp.." DKP has been shared, giving "..sharedDkp.." DKP to each player.", RAID_CHANNEL)
-	end
-end
-
-
-
---[[
-	Share DKP to all people in range (100 yards)
-	Each member will get <dkp>/<# of members in range> DKP.
-	Syntax: /gdsharerange <dkp>
-]]
-SLASH_GUILDDKP_SHARE_RANGE1 = "/gdsharerange"
-SLASH_GUILDDKP_SHARE_RANGE2 = "/sharerange"
-SlashCmdList["GUILDDKP_SHARE_RANGE"] = function(msg)
-	local _, _, dkp = string.find(msg, "(%d*).*")
-
-	if isInRaid() and canWriteNotes() then
-		if dkp and tonumber(dkp) then
-			AddJob( GDShareRange_callback, dkp, "_" )
-			requestUpdateRoster()
-		else
-			GuildDKP_Echo("Syntax: /gdsharerange <dkp value>")
-		end
-	end
-end
-
-function GDShareRange_callback(job)
-	local dkp = job[2]
-
-	--	Run through list twice:
-	--	First loop: count # of members in range
-	local unitid
-	local members = 0
-	for n=1, 40, 1 do
-		unitid = "raid"..n
-		if UnitName(unitid) and UnitIsConnected(unitid) and UnitIsVisible(unitid) then
-			members = members + 1
-		end
-	end	
-
-	if members > 0 then		
-		local tidIndex = 1
-		local tidChanges = {}
-
-		--	Second loop: apply the DKP:
-		local sharedDkp = ceil(dkp / members)
-		for n=1, 40, 1 do
-			unitid = "raid"..n
-			if UnitName(unitid) and UnitIsConnected(unitid) and UnitIsVisible(unitid) then
-				applyDKP(UnitName(unitid), sharedDkp)
-				tidChanges[tidIndex] = { UnitName(unitid), sharedDkp }
-				tidIndex = tidIndex + 1
-			end
-		end
-		logMultipleTransactions("GDShareRange", tidChanges)	
-		SendChatMessage(dkp.." DKP has been added, giving "..sharedDkp.." to "..members.." players in range.", RAID_CHANNEL)
-	end
-end
-
-
-
---[[
-	Subtract DKP from all guild members. This is not from raid only.
-	Note: this will *fail* if Offline people are not visible.
-	Syntax: /gddecay
-]]
-SLASH_GUILDDKP_DECAY1 = "/gddecay"
-SlashCmdList["GUILDDKP_DECAY"] = function(msg)
-	local _, _, dkp = string.find(msg, "(%d*).*")
-
-	if canWriteNotes() then
-		AddJob( function(job) decayDKP(job[2]) end, dkp, "_" )
-		requestUpdateRoster()
-	end
-end
-
-
-
 --[[
 	Show transaction log from transaction id <id>.
 	Defaults to the last 5 transactions.
@@ -444,7 +239,6 @@ SlashCmdList["GUILDDKP_LOG"] = function(msg)
 	end
 end
 
-
 --[[
 	Show transaction log details (usefull for transactions with many players)
 	Syntax: /gdlogdetails <transaction id>
@@ -460,7 +254,6 @@ SlashCmdList["GUILDDKP_LOGDETAILS"] = function(msg)
 		GuildDKP_Echo("Syntax: /gdlogdetails <transaction id>")
 	end
 end
-
 
 --[[
 	Show transaction log details in guildchat (usefull for transactions with many players)
@@ -478,7 +271,6 @@ SlashCmdList["GUILDDKP_POSTLOG"] = function(msg)
 	end
 end
 
-
 --[[
 	Undo specific transaction (rollback transaction)
 	Syntax: /gdundo [<transaction id>]
@@ -494,8 +286,6 @@ SlashCmdList["GUILDDKP_UNDO"] = function(msg)
 		GuildDKP_Echo("Syntax: /gdundo [<transaction id>]")
 	end
 end
-
-
 
 --[[
 	Redo specific transaction (cancel rollback)
@@ -513,7 +303,6 @@ SlashCmdList["GUILDDKP_REDO"] = function(msg)
 	end
 end
 
-
 --[[
 	Include (add) a player to a (typical multiplayer) transaction.
 	Syntax: /gdinclude <player> <transaction id>
@@ -529,8 +318,6 @@ SlashCmdList["GUILDDKP_INCLUDE"] = function(msg)
 		GuildDKP_Echo("Syntax: /gdinclude <name> <transaction id>")
 	end
 end
-
-
 
 --[[
 	Exclude (remove) a player from a (typical multiplayer) transaction.
@@ -548,8 +335,6 @@ SlashCmdList["GUILDDKP_EXCLUDE"] = function(msg)
 	end
 end
 
-
-
 --[[
 	Synchronize the transaction log with others.
 	Syntax: /gdsynchronize
@@ -564,8 +349,6 @@ SlashCmdList["GUILDDKP_SYNCHRONIZE"] = function(msg)
 	end
 end
 
-
-
 --[[
 	Display current configuration options.
 ]]
@@ -574,8 +357,6 @@ SlashCmdList["GUILDDKP_CONFIG"] = function()
 	GuildDKP_Echo("Current DKP string length: ".. GDKP_DkpStringLength);
 	GuildDKP_Echo("Current debug level: ".. GDKP_DebugLevel);
 end
-
-
 
 --[[
 	Get or Set Debug level.
@@ -594,8 +375,6 @@ SlashCmdList["GUILDDKP_DEBUGLEVEL"] = function(msg)
 	end
 end
 
-
-
 --[[
 	Get or Set DKP string lengrh
 	If no param is given, the function outputs the current DKP string length
@@ -613,8 +392,6 @@ SlashCmdList["GUILDDKP_DKP_LENGTH"] = function(msg)
 		GuildDKP_Echo("Syntax: /gddkplength <DKP string length [0 - 6]>")
 	end
 end
-
-
 
 --[[
 	Display names of all players in combat - used to detect combat bugged people.
@@ -661,58 +438,6 @@ SlashCmdList["GUILDDKP_CHECKCOMBAT"] = function(msg)
 	end
 end
 
-
-
---[[
-	Check if people are within range (100 yards)
-	if "raid" parameter, the names will be displayed in the raid chat.
-	Syntax: /gdrange [raid], /checkrange [raid]	
-]]
-SLASH_GUILDDKP_CHECKRANGE1 = "/gdrange"
-SLASH_GUILDDKP_CHECKRANGE2 = "/checkrange"
-SlashCmdList["GUILDDKP_CHECKRANGE"] = function(msg)
-	local _, _, chatparam = string.find(msg, "(%S*).*")
-	local message = nil
-	
-	if isInRaid() then
-		for n=1, 40, 1 do
-			local unitid = "raid"..n
-			local player = UnitName(unitid)
-			local isOnline = UnitIsConnected(unitid)
-
-			if player then		
-				if isOnline and UnitIsVisible(unitid) then
-					-- Player is visible (in range), do nothing
-				else
-					if message then
-						message = message ..", ".. player
-					else
-						message = player
-					end			
-				end
-			end
-		end	
-		
-		if message then
-			if chatparam and UCFirst(chatparam) == "Raid" then
-				SendChatMessage("The following players are not in range:", RAID_CHANNEL)
-				SendChatMessage(message, RAID_CHANNEL)
-			else
-				GuildDKP_Echo("The following players are not in range:")
-				GuildDKP_Echo(message)
-			end
-		else
-			if chatparam and UCFirst(chatparam) == "Raid" then
-				SendChatMessage("All players are in range.", RAID_CHANNEL)
-			else
-				GuildDKP_Echo("All players are in range")
-			end
-		end	
-	end
-end
-
-
-
 --[[
 	Request a version check for all GuildDKP clients in raid.
 	This is done by sending a "gdrequestversion" message in the Addon channel.
@@ -731,7 +456,6 @@ SlashCmdList["GUILDDKP_CHECKVERSION"] = function()
 	end
 end
 
-
 --[[
 	Display help (command syntax)
 	Syntax: /gdhelp
@@ -746,19 +470,13 @@ SlashCmdList["GUILDDKP_HELP"] = function()
 	GuildDKP_Echo("/gddkp <player>	 --  Display how much DKP <player> owns.")
 	GuildDKP_Echo("/gdclass <class>  --  Display DKP for all players of <class>.")
 	GuildDKP_Echo("/gdcombat [channel] --  Display players currently in combat.")
-	GuildDKP_Echo("/gdrange [channel]  --  Display players not within 100 yards range.")
 	GuildDKP_Echo("/gdversion --  Request version information (if any) for all players in raid.")
 	GuildDKP_Echo("")
 	GuildDKP_Echo("DKP control:")
 	GuildDKP_Echo("/gdplus <player> <amount>  --  Add <amount> DKP to <player> and announce in raid.")
 	GuildDKP_Echo("/gdminus <player> <amount>  --  Subtract <amount> DKP from <player> and announce in raid.")
-	GuildDKP_Echo("/gdminuspct <player> <percent>  --  Subtract <percent> % DKP from <player> and announce in raid.")
 	GuildDKP_Echo("/gdaddraid <amount>  --  Add <amount> DKP to all players in the raid.")
-	GuildDKP_Echo("/gdaddrange <amount>  --  Add <amount> DKP to players within 100 yards range")
-	GuildDKP_Echo("/gdshareraid <amount>  --  Share <amount> DKP to all players in the raid.")
-	GuildDKP_Echo("/gdsharerange <amount>  --  Share <amount> DKP to players within 100 yards range")
 	GuildDKP_Echo("/gdsubtractraid <amount>  --  Subtract <amount< DKP from all players in the raid.")
-	GuildDKP_Echo("/gddecay <percent>  --  Subtract <percent> % DKP from all players in the guild.")
 	GuildDKP_Echo("")
 	GuildDKP_Echo("Transaction control:")
 	GuildDKP_Echo("/gdlog [lines]  --  List the last [lines] transactions, defaults to 10.")
@@ -769,9 +487,6 @@ SlashCmdList["GUILDDKP_HELP"] = function()
 	GuildDKP_Echo("/gdexclude <player> <transaction id>  --  Remove player from a transaction")
 	GuildDKP_Echo("/gdinclude <player> <transaction id>  --  Add player to a transaction")
 end
-
-
-
 
 --  *******************************************************
 --
@@ -801,7 +516,6 @@ function addRaidDKP(dkp, description)
 	end
 end
 
-
 --[[
 	Subtract DKP from all (online) guilded raid members.
 ]]
@@ -823,62 +537,6 @@ function subtractRaidDKP(dkp, description)
 		logMultipleTransactions(description, tidChanges)
 	end
 end
-
-
---[[
-	Subtract DKP from all players in guild based on our decay metrics
-]]
-function decayDKP(percent)
-
-	local playerCount = table.getn(guildRoster)
-	local currentPlayer = UnitName("player")
-	local updateCount = 0
-	local reducedDkp = 0
-
-
-	--	This ensure the guild roster also contains Offline members.
-	--	The drawback is that the user cannot untick the "Show Offline Members" in the UI,
-	--	but it is the only way we can display DKP for offline's also.
-	if not GetGuildRosterShowOffline() then
-		GuildDKP_Echo("Guild Decay cancelled: You need to enable Offline Guild Members in the guild roster first.")
-		return
-	end
-
-	local tidIndex = 1
-	local tidChanges = {}
-
-	--	Iterate over all guilded players - online or not
-	for n=1,playerCount,1 do
-		local player = guildRoster[n]
-		local name = player[1]
-		local dkp = player[2]
-		
-		local minus = 0
-		if dkp > 400 then
-			if dkp < 800 then
-				minus = math.floor((dkp - 400) * 0.25)
-			else
-				minus = math.floor((dkp - 800) * 0.5 + 100)
-			end
-		end
-		
-		if minus > 0 then
-			tidChanges[tidIndex] = { name, (-1 * minus) }
-			tidIndex = tidIndex + 1
-		
-			reducedDkp = reducedDkp + minus
-			updateCount = updateCount + 1
-						
-			applyDKP(name, -1 * minus)
-		end
-	end
-	
-	logMultipleTransactions("GDDecay", tidChanges)
-	
-	SendChatMessage("Guild DKP decay was performed by "..currentPlayer..".", GUILD_CHANNEL)
-	SendChatMessage("Guild DKP removed a total of "..reducedDkp.." DKP from ".. updateCount .." players.", GUILD_CHANNEL)
-end
-
 
 --[[
 	Get DKP belonging to a specific player.
@@ -911,8 +569,6 @@ function getDKP(receiver)
    	end
    	return false
 end
-
-
 
 --[[
 	Apply DKP to a specific player.
@@ -980,8 +636,6 @@ function createDkpString(dkp)
 	return result
 end
 
-
-
 --[[
 	Apply DKP to local loaded list
 	Input: receiver, dkpadded
@@ -1006,8 +660,6 @@ function applyLocalDKP(receiver, dkpAdded)
 	end
 end
 
-
-
 --[[
 	Display DKP amount for a specific player (locally) in the raid
 ]]
@@ -1028,8 +680,6 @@ function displayDKPForRaidingPlayer(receiver)
 	end	
 end
 
-
-
 --[[
 	Display DKP amount for a specific player (locally) in the guild
 ]]
@@ -1045,8 +695,6 @@ function displayDKPForGuildedPlayer(receiver)
 		GuildDKP_Echo(receiver.." was not found in guild.")
 	end	
 end
-
-
 
 --[[
 	Display DKP amount for a specific class (locally) in the raid
@@ -1107,8 +755,6 @@ function displayDKPForRaidingClass(classname)
 		GuildDKP_Echo("No "..classname.."s was found in raid.")
 	end
 end
-
-
 
 --[[
 	Display DKP amount for a specific class (locally) in the guild
@@ -1175,9 +821,6 @@ function displayDKPForGuildedClass(classname)
 	end	
 end
 
-
-
-
 --  *******************************************************
 --
 --	Roster Functions
@@ -1221,7 +864,6 @@ function refreshGuildRoster()
 		index = index + 1	
 	end
 end
-
 
 --[[
 	Re-read the raid status and namely the DKP values.
@@ -1271,7 +913,6 @@ function refreshRaidRoster()
 	end	
 end
 
-
 --[[
 	Return the amount of DKP a specific player in the raid currently has.
 	Input: player name
@@ -1290,7 +931,6 @@ function getRaidPlayer(receiver)
 	end
 	return nil
 end
-
 
 --[[
 	Return the amount of DKP a specific player in the guild currently has.
@@ -1338,9 +978,6 @@ function handleGuildRosterUpdate()
 		end
 	end
 end
-
-
-
 
 --  *******************************************************
 --
@@ -1419,7 +1056,6 @@ function packTable(sourcetable)
 	return destinationtable
 end
 
-
 --[[
 	Sort table using specific column index in ascending order
 ]]
@@ -1487,9 +1123,6 @@ function checkClass(className)
 	return false
 end
 
-
-
-
 --  *******************************************************
 --
 --	Echo Functions
@@ -1543,9 +1176,6 @@ function GuildDKP_debug(msg)
 	end
 end
 
-
-
-
 --  *******************************************************
 --
 --	Transaction Functions
@@ -1557,7 +1187,6 @@ function logSingleTransaction(description, name, dkp)
 	tidChanges[1] = { name, dkp }
 	logMultipleTransactions(description, tidChanges)
 end
-
 
 function logMultipleTransactions(description, transactions)
 	local tid = getNextTransactionID()
@@ -1685,7 +1314,6 @@ function showTransactionDetails(transactionID)
 	GuildDKP_Echo ("Transaction with TID="..transactionID.." was not found .")
 end
 
-
 --[[
 	Display details for one transaction (takes multiple lines) in guild chat.
 ]]
@@ -1778,7 +1406,6 @@ function showTransactionDetailsInGuildChat(transactionID)
 	GuildDKP_Echo ("Transaction with TID=<"..transactionID.."> was not found.")
 end
 
-
 --[[
 	Undo a transaction.
 	This must be called using Callback functions.
@@ -1828,7 +1455,6 @@ function undoTransaction(transactionID)
 	GuildDKP_Echo ("Transaction with TID="..transactionID.." was not found.")
 end
 
-
 --[[
 	Redo a transaction (cancel transaction rollback)
 	This must be called using Callback functions.
@@ -1877,7 +1503,6 @@ function redoTransaction(transactionID)
 	
 	GuildDKP_Echo ("Transaction with TID="..transactionID.." was not found.")
 end
-
 
 --[[
 	Add player <name> to the transaction, and remove his dkp.
@@ -1945,7 +1570,6 @@ function includePlayerInTransaction(transactionID, playername)
 	GuildDKP_Echo ("Transaction with TID="..transactionID.." was not found.")
 end
 
-
 --[[
 	Remove player <name> from the transaction, and reapply his dkp.
 	Only transactions in ACTIVE state can exclude players.
@@ -2006,7 +1630,6 @@ function excludePlayerInTransaction(transactionID, playername)
 	GuildDKP_Echo ("Transaction with TID="..transactionID.." was not found.")
 end
 
-
 --[[
 	Synchronize the local transaction log with other clients.
 	This is done in a two-step approach:
@@ -2046,39 +1669,6 @@ function generateColouredDKP(dkp)
 	return output
 end
 
-
-
-
---  *******************************************************
---
---	Communication Functions
---
---  *******************************************************
-
---[[
-	Chat Addon Communication functions.
-	<Recipient name> is used when the destination is set to be a specific character;
-	usually in responses (RX).
-	
-	TX_VERSION#<>#<>
-		Request client version information
-	RX_VERSION#<version number>#<recipient name>
-		Response to a version request.
-		
-	TX_UPDATE#<transaction info>#<>
-		Multicast a transaction to other clients.
-		
-	TX_SYNCINIT#<>#<>
-		Request highest transaction id
-	RX_SYNCINIT#<max transaction id>#<recipient name>
-		Response with highest transaction id
-
-	TX_SYNCTRAC#<>#<recipient name>
-		Request synchronization of transactions from selected client
-
-]]
-
-
 --[[
 	Respond to a TX_VERSION command.
 	Input:
@@ -2101,7 +1691,6 @@ local function HandleRXVersion(message, sender)
 	local out = "".. sender .." is using GuildDKP version ".. message
 	GuildDKP_Echo(out)
 end
-
 
 --[[
 	TX_UPDATE: A transaction was broadcasted. Add transaction details to transactions list.
@@ -2136,7 +1725,6 @@ local function HandleTXUpdate(message, sender)
 
 end
 
-
 --	Clients must return the highest transaction ID they own in RX_SYNCINIT
 function HandleTXSyncInit(message, sender)
 	--	Message was from SELF, no need to return RX_SYNCINIT
@@ -2147,7 +1735,6 @@ function HandleTXSyncInit(message, sender)
 	syncResults = {}
 	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCINIT#"..currentTransactionID.."#"..sender, "RAID")
 end
-
 
 --Handle RX_SYNCINIT responses from clients
 function HandleRXSyncInit(message, sender)
@@ -2161,7 +1748,6 @@ function HandleRXSyncInit(message, sender)
 	
 	syncResults[syncIndex] = { sender, message }
 end
-
 
 --	This is called by the timer when responses are no longer accepted
 function HandleRXSyncInitDone()
@@ -2191,7 +1777,6 @@ function HandleRXSyncInitDone()
 	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "TX_SYNCTRAC##"..maxName, "RAID")	
 end
 
-
 --	Client is requested to sync transaction log with <sender>
 function HandleTXSyncTransaction(message, sender)
 	--	Iterate over transactions
@@ -2219,7 +1804,6 @@ function HandleTXSyncTransaction(message, sender)
 	--	Last, send an EOF to signal all transactions were sent.
 	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCTRAC#EOF#"..sender, "RAID")				
 end
-
 
 --	Received a sync'ed transaction - merge this with existing transaction log.
 function HandleRXSyncTransaction(message, sender)
@@ -2259,9 +1843,6 @@ function HandleRXSyncTransaction(message, sender)
 	transactionLog[tid] = transaction
 end
 
-
-
-
 --  *******************************************************
 --
 --	Job Queue Functions
@@ -2287,164 +1868,6 @@ function getNextJob()
 	return job
 end
 
-
-
-
---  *******************************************************
---
---	Context menu functions
---
---  *******************************************************
-
-USER_DROPDOWNBUTTONS = {};
-
-function GuildDKP_addDropDownMenuButton(uid, dropdown, index, title, usable, onClick, hint)
-	tinsert(UnitPopupMenus[dropdown],index,uid);
-	if(hint) then
-		UnitPopupButtons[uid] = { text = title, dist = 0, tooltip = hint};
-	else
-		UnitPopupButtons[uid] = { text = title, dist = 0 };
-	end
-	
-	USER_DROPDOWNBUTTONS[uid] = { func = onClick, enabled = usable };
-end
-
-
-local GuildDKP_UIDropDownMenu_AddButton = UIDropDownMenu_AddButton;
-UIDropDownMenu_AddButton = function(info, level)
-	if(USER_DROPDOWNBUTTONS[info.value]) then
-		local dropdownFrame = getglobal(UIDROPDOWNMENU_INIT_MENU);
-		info.func = USER_DROPDOWNBUTTONS[info.value].func;
-	end;
-	GuildDKP_UIDropDownMenu_AddButton(info,level);
-end;
-
-
-function GuildDKP_AddDKPFromMenu(self)
-	local frame = getglobal(UIDROPDOWNMENU_OPEN_MENU);
-
-	if isInRaid(false) then
-		StaticPopupDialogs["DKP_POPUP"] = {
-			text = string.format("Add DKP to %s:", UnitName(frame.unit)),
-			hasEditBox = true,
-			hideOnEscape = true,
-			whileDead = true,
-			button1 = "Okay",
-			button2 = "Cancel",
-			timeout = 0,
-			maxLetters = 6,
-			OnShow = function()	
-				local c = getglobal(self:GetName().."EditBox");
-				c:SetText("");
-			end,
-			EditBoxOnEnterPressed = function()
-				self:GetParent():Hide();
-				GuildDKP_DoAddDKPFromMenu(UnitName(frame.unit), self:GetText());
-			end,
-			OnAccept = function(self, data)
-				local c = getglobal(self:GetParent():GetName().."EditBox");		
-				GuildDKP_DoAddDKPFromMenu(UnitName(frame.unit), c:GetText());
-			end
-		}
-		StaticPopup_Show("DKP_POPUP");
-	end
-end
-
-function GuildDKP_DoAddDKPFromMenu(name, dkp)
-	if isInRaid(false) and canWriteNotes() then
-		if dkp and name and tonumber(dkp) then
-			AddJob( GDPlus_callback, name, dkp )
-			requestUpdateRoster()
-		else
-			GuildDKP_Echo(string.format("%s is not a valid number", dkp));
-		end
-	end
-end
-
-function GuildDKP_SubtractDKPFromMenu(self)
-	local frame = getglobal(UIDROPDOWNMENU_OPEN_MENU);
-
-	if isInRaid(false) then
-		StaticPopupDialogs["DKP_POPUP"] = {
-			text = string.format("Subtract DKP from %s:", UnitName(frame.unit)),
-			hasEditBox = true,
-			hideOnEscape = true,
-			whileDead = true,
-			button1 = "Okay",
-			button2 = "Cancel",
-			timeout = 0,
-			maxLetters = 6,
-			OnShow = function()	
-				local c = getglobal(self:GetName().."EditBox");
-				c:SetText("");
-			end,
-			EditBoxOnEnterPressed = function()
-				self:GetParent():Hide();
-				GuildDKP_DoSubtractDKPFromMenu(UnitName(frame.unit), self:GetText());
-			end,
-			OnAccept = function(self, data)
-				local c = getglobal(self:GetParent():GetName().."EditBox");
-				GuildDKP_DoSubtractDKPFromMenu(UnitName(frame.unit), c:GetText());
-			end
-		}
-		StaticPopup_Show("DKP_POPUP");
-	end
-end
-
-function GuildDKP_DoSubtractDKPFromMenu(name, dkp)
-	if isInRaid(false) and canWriteNotes() then
-		if dkp and name and tonumber(dkp) then
-			AddJob( GDMinus_callback, name, dkp )
-			requestUpdateRoster()
-		else
-			GuildDKP_Echo(string.format("%s is not a valid number", dkp));
-		end
-	end
-end
-
-function GuildDKP_SubtractPercentFromMenu(self)
-	local frame = getglobal(UIDROPDOWNMENU_OPEN_MENU);
-	
-	if isInRaid(false) then
-		StaticPopupDialogs["DKP_POPUP"] = {
-			text = string.format("Subtract PERCENT from %s:", UnitName(frame.unit)),
-			hasEditBox = true,
-			hideOnEscape = true,
-			whileDead = true,
-			button1 = "Okay",
-			button2 = "Cancel",
-			timeout = 0,
-			maxLetters = 2,
-			OnShow = function()	
-				local c = getglobal(self:GetName().."EditBox");
-				c:SetText("");
-			end,
-			EditBoxOnEnterPressed = function()
-				self:GetParent():Hide();
-				GuildDKP_DoSubtractPercentFromMenu(UnitName(frame.unit), self:GetText());
-			end,
-			OnAccept = function(self, data)
-				local c = getglobal(self:GetParent():GetName().."EditBox");
-				GuildDKP_DoSubtractPercentFromMenu(UnitName(frame.unit), c:GetText());
-			end
-		}
-		StaticPopup_Show("DKP_POPUP");
-	end
-end
-
-function GuildDKP_DoSubtractPercentFromMenu(name, pct)
-	if isInRaid(false) and canWriteNotes() then
-		if pct and name and tonumber(pct) then
-			AddJob( GDMinusPercent_callback, name, pct )
-			requestUpdateRoster()
-		else
-			GuildDKP_Echo(string.format("%s is not a valid number", pct));
-		end
-	end
-end
-
-
-
 --  *******************************************************
 --
 --	Event Handlers
@@ -2457,21 +1880,6 @@ function GuildDKP_OnLoad(self)
     self:RegisterEvent("GUILD_ROSTER_UPDATE") 
     self:RegisterEvent("CHAT_MSG_ADDON")
     self:RegisterEvent("RAID_ROSTER_UPDATE")
-    
-    -- If GuildDKP_addDropDownMenuButton could just accept functions and not a boolean - grrrr!
-    -- Now we have to either ENABLE or DISABLE buttons all time, not only when in raid.
-    local GuildDKP_ValidForMenu = true;
-    
-	GuildDKP_addDropDownMenuButton("PercentDKPParty", "PARTY", 1, "Penalty DKP", GuildDKP_ValidForMenu, GuildDKP_SubtractPercentFromMenu);
-	GuildDKP_addDropDownMenuButton("PlusDKPParty", "PARTY", 1, "Add DKP", GuildDKP_ValidForMenu, GuildDKP_AddDKPFromMenu);
-	GuildDKP_addDropDownMenuButton("MinusDKPParty", "PARTY", 1, "Subtract DKP", GuildDKP_ValidForMenu, GuildDKP_SubtractDKPFromMenu);
-
-	--	This line separates DKP options with remaining options.
-	--	Next option is REMOVE (from raid), we should not click this by accident!
-	GuildDKP_addDropDownMenuButton("DKPSplitter", "RAID", 1, "--------------------", GuildDKP_ValidForMenu, nil);
-	GuildDKP_addDropDownMenuButton("PercentDKPRaid", "RAID", 1, "Penalty DKP", GuildDKP_ValidForMenu, GuildDKP_SubtractPercentFromMenu);
-	GuildDKP_addDropDownMenuButton("PlusDKPRaid", "RAID", 1, "Add DKP", GuildDKP_ValidForMenu, GuildDKP_AddDKPFromMenu);
-	GuildDKP_addDropDownMenuButton("MinusDKPRaid", "RAID", 1, "Subtract DKP", GuildDKP_ValidForMenu, GuildDKP_SubtractDKPFromMenu);
 
 	SetGuildRosterShowOffline(true)
 	requestUpdateRoster()
