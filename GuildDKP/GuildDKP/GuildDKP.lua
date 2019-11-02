@@ -89,25 +89,10 @@ SlashCmdList["GUILDDKP_CLASS"] = function(msg)
 	if not checkClass(classname) then
 		GuildDKP_Echo("'"..UCFirst(classname).."' is not a valid class.")
 		return
-	end	
-	
-	if canReadNotes() then
-		if isInRaid(true) then
-			if table.getn(raidRoster) > 0 then
-				displayDKPForRaidingClass(classname)
-			else
-				AddJob( function(job) displayDKPForRaidingClass(job[2]) end, classname, "_" )
-				requestUpdateRoster()   
-			end
-		else
-			if table.getn(guildRoster) > 0 then
-				displayDKPForGuildedClass(classname)
-			else
-				AddJob( function(job) displayDKPForGuildedClass(job[2]) end, classname, "_" )
-				requestUpdateRoster()
-			end
-		end
 	end
+
+	displayDKPForGuildedClass(classname)
+	requestUpdateRoster()
 end
 
 --[[
@@ -339,33 +324,6 @@ function subtractRaidDKP(dkp, description)
 end
 
 --[[
-	Get DKP belonging to a specific player.
-	Returns FALSE if player was not found. Players with no DKP will return 0.
-]]
-function getDKP(receiver)
-	local memberCount = GetNumGuildMembers()
-	local dkpValue = 0
-
-	for n=1,memberCount,1 do
-		local player, _, _, _, _, _, publicNote, officerNote = GetGuildRosterInfo(n)
-        local name = ""
-        local realm = ""
-        name, realm = player:match("([^,]+)%-([^,]+)")
-
-		local note = officerNote
-		if name == receiver then
-			local _, _, dkp = string.find(note, "<(-?%d*)>")
-
-			if dkp and tonumber(dkp)  then
-				dkpValue = (1 * dkp)
-			end
-			return dkpValue		
-		end
-   	end
-   	return false
-end
-
---[[
 	Apply DKP to a specific player.
 	Returns FALSE if DKP could not be applied.
 ]]
@@ -457,26 +415,6 @@ function applyLocalDKP(receiver, dkpAdded)
 end
 
 --[[
-	Display DKP amount for a specific player (locally) in the raid
-]]
-function displayDKPForRaidingPlayer(receiver)
-	receiver = UCFirst(receiver)
-	local player = getRaidPlayer(receiver)
-	
-	if player then
-		local dkp = player[2]
-				
-		if dkp then
-			GuildDKP_Echo(receiver.." currently has "..dkp.." DKP.")
-		else
-			GuildDKP_Echo(receiver.." does not have any DKP.")
-		end
-	else
-		GuildDKP_Echo(receiver.." was not found in raid.")
-	end	
-end
-
---[[
 	Display DKP amount for a specific player (locally) in the guild
 ]]
 function displayDKPForGuildedPlayer(receiver)
@@ -490,66 +428,6 @@ function displayDKPForGuildedPlayer(receiver)
 	else
 		GuildDKP_Echo(receiver.." was not found in guild.")
 	end	
-end
-
---[[
-	Display DKP amount for a specific class (locally) in the raid
-	Input: class name
-	Output: (list of players with dkp directly to local screen)
-]]
-function displayDKPForRaidingClass(classname)
-	classname = UCFirst(classname)
-
-	local classMembers = {}
-	local classCount = 1
-	for n=1, table.getn(raidRoster),1 do
-		local player = raidRoster[n]
-		local name = player[1]
-		local dkp = player[2]
-		local class = player[3]
-		local online = player[4]
-
-		if class == classname then
-			classMembers[classCount] = {name, dkp, online}
-			classCount = classCount + 1
-		end
-	end
-
-	-- Sort the DKP list with highest DKP in top.
-	local doSort = true
-	while doSort do
-		doSort = false
-		for n=1,table.getn(classMembers) - 1,1 do
-			local a = classMembers[n]
-			local b = classMembers[n + 1]
-			if tonumber(a[2]) and tonumber(b[2]) and tonumber(a[2]) < tonumber(b[2]) then
-				classMembers[n] = b
-				classMembers[n + 1] = a
-				doSort = true
-			end
-		end
-	end
-
-	if table.getn(classMembers) > 0 then
-		for n=1,table.getn(classMembers),1 do
-			local rec = classMembers[n]
-			local name = rec[1]
-			local dkp = rec[2]
-			local online = rec[3]
-			
-			if not online then
-				name = name.." (Offline)"
-			end
-			
-			if dkp then
-				GuildDKP_Echo(name.." currently has "..dkp.." DKP.")
-			else
-				GuildDKP_Echo(name.." does not have any DKP.")
-			end		
-		end		
-	else
-		GuildDKP_Echo("No "..classname.."s was found in raid.")
-	end
 end
 
 --[[
@@ -568,10 +446,11 @@ function displayDKPForGuildedClass(classname)
 	
 	--	First get all players of the wanted class
 	for n=1,memberCount,1 do
-		local player = guildRoster[n]
-		local name = player[1]
-		local dkp = player[2]
-		local class = player[3]
+		local player, _, _, _, class, _, publicNote, officerNote = GetGuildRosterInfo(n)
+        local name = ""
+        local realm = ""
+        name, realm = player:match("([^,]+)%-([^,]+)")
+		local _, _, dkp = string.find(officerNote, "<(-?%d*)>")
 
 		if class == classname then
 			classCount = classCount + 1
