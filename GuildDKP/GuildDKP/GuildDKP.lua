@@ -69,7 +69,7 @@ SlashCmdList["GUILDDKP_STATUS_DKP"] = function(msg)
 	if not name or name == "" then
 		name = UnitName("player")
 	end
-	displayDKPForGuildedPlayer(name)
+	displayDKPForGuildedPlayer(UCFirst(name))
 end
 
 --[[
@@ -118,24 +118,14 @@ SLASH_GUILDDKP_PLUS_DKP1 = "/gdplus"
 SLASH_GUILDDKP_PLUS_DKP2 = "/gdp"
 SlashCmdList["GUILDDKP_PLUS_DKP"] = function(msg)
 	local _, _, name, dkp = string.find(msg, "(%S*)%s*(%d*).*")
-
-	if isInRaid() and canWriteNotes() then
+	if isInRaid() then
 		if dkp and name and tonumber(dkp) then
-			AddJob( GDPlus_callback, name, dkp )
+			applyDKP(UCFirst(name), dkp)
+			SendChatMessage(string.format("%s has been awarded %s DKP", UCFirst(name), dkp), "RAID_WARNING")
 			requestUpdateRoster()
 		else
 			GuildDKP_Echo("Syntax: /gdplus <name> <dkp value>")
 		end
-	end
-end
-
-function GDPlus_callback(job)
-	local name = UCFirst(job[2])
-	local dkp = job[3]
-
-	if applyDKP(name, dkp) then	
-		logSingleTransaction("GDPlus", name, dkp)
-		SendChatMessage(dkp.." DKP has been added to "..name..".", RAID_CHANNEL)
 	end
 end
 
@@ -148,24 +138,15 @@ SLASH_GUILDDKP_MINUS_DKP2 = "/gdm"
 SlashCmdList["GUILDDKP_MINUS_DKP"] = function(msg)
 	local _, _, name, dkp = string.find(msg, "(%S*)%s*(%d*).*")
 
-	if isInRaid() and canWriteNotes() then
+	if isInRaid() then
 		if dkp and name and tonumber(dkp) then
-			AddJob( GDMinus_callback, name, dkp )
+			applyDKP(UCFirst(name), (-1 * dkp))
+			SendChatMessage(string.format("%s DKP has been subtracted from %s", dkp, UCFirst(name)), "RAID_WARNING")
 			requestUpdateRoster()
 		else
 			GuildDKP_Echo("Syntax: /gdminus <name> <dkp value>")
 		end
 	end    
-end
-
-function GDMinus_callback(job)
-	local name = UCFirst(job[2])
-	local dkp = job[3]
-
-	if applyDKP(name, (-1 * dkp)) then
-		logSingleTransaction("GDMinus", name, (-1 * dkp))
-		SendChatMessage(dkp.." DKP was subtracted from "..name..".", RAID_CHANNEL)
-	end
 end
 
 --[[
@@ -177,176 +158,15 @@ SLASH_GUILDDKP_ADD_RAID2 = "/addraid"
 SlashCmdList["GUILDDKP_ADD_RAID"] = function(msg)
 	local _, _, dkp = string.find(msg, "(%d*).*")
 
-	if isInRaid() and canWriteNotes() then
+	if isInRaid() then
 		if dkp and tonumber(dkp) then
-			AddJob( GDAddRaid_callback, dkp, "_" )
+			addRaidDKP(dkp, "GDAddRaid")
+			SendChatMessage(string.format("%s DKP has been added to all players in raid", dkp), "RAID_WARNING")
 			requestUpdateRoster()
 		else
 			GuildDKP_Echo("Syntax: /gdaddraid <dkp>")
 		end
 	end    
-end
-
-function GDAddRaid_callback(job)
-	local dkp = job[2]
-	addRaidDKP(dkp, "GDAddRaid")
-	SendChatMessage(dkp.." DKP has been added to all players in raid.", RAID_CHANNEL)
-end
-
---[[
-	Subtract DKP from all guild members in the current raid.
-	Syntax: /gdsubtractraid <dkp value>
-]]
-SLASH_GUILDDKP_SUBTRACT_RAID1 = "/gdsubtractraid"
-SLASH_GUILDDKP_SUBTRACT_RAID2 = "/subtractraid"
-SlashCmdList["GUILDDKP_SUBTRACT_RAID"] = function(msg)
-	local _, _, dkp = string.find(msg, "(%d*).*")
-
-	if isInRaid() and canWriteNotes() then
-		if dkp and tonumber(dkp) then
-			AddJob( GDSubtractRaid_callback, dkp, "_" )
-			requestUpdateRoster()
-		else
-			GuildDKP_Echo("Syntax: /gdsubtractraid <dkp>")
-		end
-	end    
-end
-
-function GDSubtractRaid_callback(job)
-	local dkp = job[2]
-	subtractRaidDKP(dkp, "GDSubtractRaid")
-	SendChatMessage(dkp.." DKP has been subtracted from all players in raid.", RAID_CHANNEL)
-end
-
---[[
-	Show transaction log from transaction id <id>.
-	Defaults to the last 5 transactions.
-	Syntax: /gdlog [<transaction id>]
-]]
-SLASH_GUILDDKP_LOG1 = "/gdlog"
-SLASH_GUILDDKP_LOG2 = "/dkplog"
-SlashCmdList["GUILDDKP_LOG"] = function(msg)
-	local _, _, transactionID = string.find(msg, "(%d*).*")
-
-	if not transactionID or transactionID == "" or not tonumber(transactionID) then
-		transactionID = 0
-	end
-
-	if tonumber(transactionID) then
-		showTransactionLog(transactionID)
-	else
-		GuildDKP_Echo("Syntax: /gdlog [<transaction id>]")
-	end
-end
-
---[[
-	Show transaction log details (usefull for transactions with many players)
-	Syntax: /gdlogdetails <transaction id>
-]]
-SLASH_GUILDDKP_LOGDETAILS1 = "/gdlogdetails"
-SLASH_GUILDDKP_LOGDETAILS2 = "/logdetails"
-SlashCmdList["GUILDDKP_LOGDETAILS"] = function(msg)
-	local _, _, transactionID = string.find(msg, "(%d*).*")
-
-	if tonumber(transactionID) then
-		showTransactionDetails(transactionID)
-	else
-		GuildDKP_Echo("Syntax: /gdlogdetails <transaction id>")
-	end
-end
-
---[[
-	Show transaction log details in guildchat (usefull for transactions with many players)
-	Syntax: /gdpostlog <transaction id>
-]]
-SLASH_GUILDDKP_POSTLOG1 = "/gdpostlog"
-SLASH_GUILDDKP_POSTLOG2 = "/postlog"
-SlashCmdList["GUILDDKP_POSTLOG"] = function(msg)
-	local _, _, transactionID = string.find(msg, "(%d*).*")
-
-	if tonumber(transactionID) then
-		showTransactionDetailsInGuildChat(transactionID)
-	else
-		GuildDKP_Echo("Syntax: /gdpostlog <transaction id>")
-	end
-end
-
---[[
-	Undo specific transaction (rollback transaction)
-	Syntax: /gdundo [<transaction id>]
-]]
-SLASH_GUILDDKP_UNDO1 = "/gdundo"
-SlashCmdList["GUILDDKP_UNDO"] = function(msg)
-	local _, _, transactionID = string.find(msg, "(%d*).*")
-
-	if transactionID and tonumber(transactionID) then
-		AddJob( function(job) undoTransaction(job[2]) end, transactionID, "_" )
-		requestUpdateRoster()
-	else
-		GuildDKP_Echo("Syntax: /gdundo [<transaction id>]")
-	end
-end
-
---[[
-	Redo specific transaction (cancel rollback)
-	Syntax: /gdundo [<transaction id>]
-]]
-SLASH_GUILDDKP_REDO1 = "/gdredo"
-SlashCmdList["GUILDDKP_REDO"] = function(msg)
-	local _, _, transactionID = string.find(msg, "(%d*).*")
-
-	if transactionID and tonumber(transactionID) then
-		AddJob( function(job) redoTransaction(job[2]) end, transactionID, "_" )
-		requestUpdateRoster()
-	else
-		GuildDKP_Echo("Syntax: /gdredo [<transaction id>]")
-	end
-end
-
---[[
-	Include (add) a player to a (typical multiplayer) transaction.
-	Syntax: /gdinclude <player> <transaction id>
-]]
-SLASH_GUILDDKP_INCLUDE1 = "/gdinclude"
-SlashCmdList["GUILDDKP_INCLUDE"] = function(msg)
-	local _, _, name, transactionID = string.find(msg, "(%S*)%s*(%d*).*")
-
-	if transactionID and name and tonumber(transactionID) then
-		AddJob( function(job) includePlayerInTransaction(job[2], job[3]) end, transactionID, name)
-		requestUpdateRoster()
-	else
-		GuildDKP_Echo("Syntax: /gdinclude <name> <transaction id>")
-	end
-end
-
---[[
-	Exclude (remove) a player from a (typical multiplayer) transaction.
-	Syntax: /gdexclude <transaction id> <player>
-]]
-SLASH_GUILDDKP_EXCLUDE1 = "/gdexclude"
-SlashCmdList["GUILDDKP_EXCLUDE"] = function(msg)
-	local _, _, name, transactionID = string.find(msg, "(%S*)%s*(%d*).*")
-
-	if transactionID and name and tonumber(transactionID) then
-		AddJob( function(job) excludePlayerInTransaction(job[2], job[3]) end, transactionID, name)
-		requestUpdateRoster()
-	else
-		GuildDKP_Echo("Syntax: /gdexclude <transaction id> <name>")
-	end
-end
-
---[[
-	Synchronize the transaction log with others.
-	Syntax: /gdsynchronize
-]]
-SLASH_GUILDDKP_SYNCHRONIZE1 = "/gdsynchronize"
-SLASH_GUILDDKP_SYNCHRONIZE2 = "/gdsync"
-SlashCmdList["GUILDDKP_SYNCHRONIZE"] = function(msg)
-	if synchronizationState == 0 then
-		synchronizeTransactionLog();
-	else
-		GuildDKP_Echo("A synchronization task is already running!");
-	end
 end
 
 --[[
@@ -478,14 +298,6 @@ SlashCmdList["GUILDDKP_HELP"] = function()
 	GuildDKP_Echo("/gdaddraid <amount>  --  Add <amount> DKP to all players in the raid.")
 	GuildDKP_Echo("/gdsubtractraid <amount>  --  Subtract <amount< DKP from all players in the raid.")
 	GuildDKP_Echo("")
-	GuildDKP_Echo("Transaction control:")
-	GuildDKP_Echo("/gdlog [lines]  --  List the last [lines] transactions, defaults to 10.")
-	GuildDKP_Echo("/gdlogdetails <transaction id>]  --  List details for one transaction.")
-	GuildDKP_Echo("/gdpostlog <transaction id>]  --  List details for one transaction in raid.")
-	GuildDKP_Echo("/gdundo <transaction id>  --  Rollback specific transaction")
-	GuildDKP_Echo("/gdredo <transaction id>  --  Cancel transaction rollback")
-	GuildDKP_Echo("/gdexclude <player> <transaction id>  --  Remove player from a transaction")
-	GuildDKP_Echo("/gdinclude <player> <transaction id>  --  Add player to a transaction")
 end
 
 --  *******************************************************
@@ -499,20 +311,12 @@ end
 ]]
 function addRaidDKP(dkp, description)
 	local playerCount = GetNumGroupMembers()
-		
+
 	if playerCount then
-		local tidIndex = 1
-		local tidChanges = {}
-
 		for n=1,playerCount,1 do
-			local name = GetRaidRosterInfo(n)
+			local name, _, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(n)
 			applyDKP(name, dkp)
-			
-			tidChanges[tidIndex] = { name, dkp }
-			tidIndex = tidIndex + 1
-		end	
-
-		logMultipleTransactions(description, tidChanges)
+		end
 	end
 end
 
@@ -523,18 +327,14 @@ function subtractRaidDKP(dkp, description)
 	local playerCount = GetNumGroupMembers()
 	
 	if playerCount then
-		local tidIndex = 1
-		local tidChanges = {}
-	
 		for n=1,playerCount,1 do
-			local name = GetRaidRosterInfo(n)
+			local player, _, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(n)
+			local name = ""
+			local realm = ""
+			name, realm = player:match("([^,]+)%-([^,]+)")
+			GuildDKP_Echo( string.format("%s - %s : %s", name, realm, receiver))
 			applyDKP(name, -1 * dkp)
-			
-			tidChanges[tidIndex] = { name, (-1 * dkp) }
-			tidIndex = tidIndex + 1
 		end	
-
-		logMultipleTransactions(description, tidChanges)
 	end
 end
 
@@ -551,14 +351,9 @@ function getDKP(receiver)
         local name = ""
         local realm = ""
         name, realm = player:match("([^,]+)%-([^,]+)")
-		GuildDKP_Echo( string.format("%s - %s : %s", name, realm, receiver))
 
-		local note = publicNote
+		local note = officerNote
 		if name == receiver then
-			if useOfficerNotes then
-				note = officerNote
-			end
-		
 			local _, _, dkp = string.find(note, "<(-?%d*)>")
 
 			if dkp and tonumber(dkp)  then
@@ -583,12 +378,8 @@ function applyDKP(receiver, dkpValue)
         local realm = ""
         name, realm = player:match("([^,]+)%-([^,]+)")
 
-		local note = publicNote
+		local note = officerNote
 		if name == receiver then
-			if useOfficerNotes then
-				note = officerNote
-			end
-		
 			local _, _, dkp = string.find(note, "<(-?%d*)>")
 
 			if dkp and tonumber(dkp)  then
@@ -604,8 +395,13 @@ function applyDKP(receiver, dkpValue)
 			else			
 				GuildRosterSetPublicNote(n, note)
 			end
-			applyLocalDKP(name, dkp)			
-			return true		
+			applyLocalDKP(name, dkp)
+			if tonumber(dkpValue) > 0 then
+				SendChatMessage(string.format("You have been rewarded with %s DKP", dkpValue), "WHISPER", "Common", name)
+			else
+				SendChatMessage(string.format("%s DKP has been subtracted you", (-1 * tonumber(dkpValue))), "WHISPER", "Common", name)
+			end
+			return true
 		end
    	end
    	GuildDKP_Echo(receiver.." was not found in the guild; DKP was not updated.")
@@ -1008,11 +804,6 @@ function canReadGuildNotes()
 end
 
 function canReadOfficerNotes()
-	--local result = CanViewOfficerNote()
-	--GuildDKP_Echo("%s", CanViewOfficerNote())
-	--if not CanViewOfficerNote() then
-	--	GuildDKP_Echo("Sorry, but you do not have access to read officer notes.")
-	--end
 	return true
 end
 
@@ -1025,11 +816,11 @@ function canWriteGuildNotes()
 end
 
 function canWriteOfficerNotes()
-	local result = CanViewOfficerNote() and CanEditOfficerNote()
-	if not result then
-		GuildDKP_Echo("Sorry, but you do not have access to write officer notes.")
-	end
-	return result	
+	--local result = CanViewOfficerNote() and CanEditOfficerNote()
+	--if not result then
+	--	GuildDKP_Echo("Sorry, but you do not have access to write officer notes.")
+	--end
+	return true
 end
 
 function isInRaid(silentMode)
@@ -1174,499 +965,6 @@ function GuildDKP_debug(msg)
 	if(tonumber(GDKP_DebugLevel) > 0) then
 		echo(msg)
 	end
-end
-
---  *******************************************************
---
---	Transaction Functions
---
---  *******************************************************
-
-function logSingleTransaction(description, name, dkp)
-	local tidChanges = {}
-	tidChanges[1] = { name, dkp }
-	logMultipleTransactions(description, tidChanges)
-end
-
-function logMultipleTransactions(description, transactions)
-	local tid = getNextTransactionID()
-	local author = UnitName("Player")
-	transactionLog[tid] = { getTimestamp(), tid, author, description, TRANSACTION_STATE_ACTIVE, transactions }
-
-	broadcastTransaction(transactionLog[tid])	
-end
-
---[[
-	Broadcast a transaction to other clients
-]]
-function broadcastTransaction(transaction)
-	if isInRaid(true) then
-		local timestamp = transaction[1]
-		local tid = transaction[2]
-		local author = transaction[3]
-		local description = transaction[4]
-		local transstate = transaction[5]
-		local transactions = transaction[6]
-
-		local rec, name, dkp, payload
-		for n = 1, table.getn(transactions), 1 do
-			rec = transactions[n]
-			name = rec[1]
-			dkp = rec[2]
-
-			--	TID plus NAME combo is unique.
-			payload = timestamp .."/".. tid .."/".. author .."/".. description .."/".. transstate .."/".. name .."/".. dkp
-			C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "TX_UPDATE#"..payload.."#", "RAID")
-		end
-	end
-end
-
-function getNextTransactionID()
-	currentTransactionID = currentTransactionID + 1
-	return currentTransactionID
-end
-
-function getTimestamp()
-	return date("%H:%M:%S", time())
-end
-
---[[
-	Display the next transactions from transactionID <id>, one transaction per line.
-	If <id> = 0, then the five last (newest) transactions are shown.
-]]
-function showTransactionLog(transactionID)
-	local transactionCount = table.getn(transactionLog)
-	transactionID = tonumber(transactionID)
-	
-	if (transactionID == 0) then
-		transactionID = 1 + transactionCount - TRANSACTION_LIST_SIZE
-	end
-	if transactionID < 1 then
-		transactionID = 1
-	end
-	
-	local lastTransactionID = transactionID + TRANSACTION_LIST_SIZE - 1
-	if lastTransactionID > transactionCount then
-		lastTransactionID = transactionCount
-	end
-
-	for n = transactionID, lastTransactionID, 1 do
-		local rec = transactionLog[n]
-		local timestamp = rec[1]
-		local tid = rec[2]
-		local author = rec[3]
-		local desc = rec[4]
-		local state = rec[5]
-		local tidChanges = rec[6]
-		local playerCount = table.getn(tidChanges)
-
-		local stateString = ""
-		if state == TRANSACTION_STATE_ROLLEDBACK then
-			stateString = ", ***ROLLED BACK***"
-		end
-
-		if playerCount == 1 then
-			--	Show player details if one person is in transaction list
-			local name = tidChanges[1][1]
-			local dkp = tidChanges[1][2]			
-			GuildDKP_Echo ("[TIME="..timestamp..", TID="..tid..", BY="..author..", CMD="..desc .. stateString.."] : "..name.." --> "..generateColouredDKP(dkp))
-		else
-			GuildDKP_Echo ("[TIME="..timestamp..", TID="..tid..", BY="..author..", CMD="..desc .. stateString.."] : ("..playerCount.." players affected)")
-		end
-	end
-	GuildDKP_Echo ("Use /GDLogDetails <transaction id> to see transaction details.")
-	GuildDKP_Echo ("Use /GDUndo <transaction id> to undo an transaction.")
-end
-
---[[
-	Display details for one transaction (takes multiple lines).
-]]
-function showTransactionDetails(transactionID)
-	for n = 1, table.getn(transactionLog), 1 do
-		local rec = transactionLog[n]
-		local timestamp = rec[1]
-		local tid = rec[2]
-		local author = rec[3]
-		local desc = rec[4]
-		local state = rec[5]
-		local tidChanges = rec[6]
-		
-		if tonumber(tid) == tonumber(transactionID) then
-			GuildDKP_Echo ("[TIME="..timestamp..", TID="..tid..", BY="..author..", CMD="..desc.."]")
-			if state == TRANSACTION_STATE_ROLLEDBACK then
-				GuildDKP_Echo ("***THIS TRANSACTION WAS ROLLED BACK***")
-			end
-			
-			local sortedList = sortTableAscending(tidChanges, 1)			
-			for f = 1, table.getn(sortedList), 1 do
-				local r2 = sortedList[f]
-				local name = r2[1]
-				local dkp = r2[2]
-				GuildDKP_Echo ("* "..name.." --> "..generateColouredDKP(dkp))
-			end
-			
-			GuildDKP_Echo ("Use /GDLogPost <TID> to post details to guild chat.")
-			GuildDKP_Echo ("Use /GDUndo <TID> to undo an transaction.")
-			return
-		end
-	end
-	
-	GuildDKP_Echo ("Transaction with TID="..transactionID.." was not found .")
-end
-
---[[
-	Display details for one transaction (takes multiple lines) in guild chat.
-]]
-function showTransactionDetailsInGuildChat(transactionID)
-	for n = 1, table.getn(transactionLog), 1 do
-		local rec = transactionLog[n]
-		local timestamp = rec[1]
-		local tid = rec[2]
-		local author = rec[3]
-		local desc = rec[4]
-		local state = rec[5]
-		local tidChanges = rec[6]
-		
-		if tonumber(tid) == tonumber(transactionID) then
-			rcEcho("[TIME="..timestamp..", TID="..tid..", BY="..author..", CMD="..desc.."] GuildDKP ".. GetAddOnMetadata("GuildDKP", "Version") .." transaction details:")
-			if state == TRANSACTION_STATE_ROLLEDBACK then
-				rcEcho ("***THIS TRANSACTION WAS ROLLED BACK***")
-			end
-			
-			--	We knows that only GDDecay gives different output per player, so we can check the type before rendering.
-			--	For non-GDDecay, we will display 8 players per line = up to 5 lines with players + 1 line of DKP info.
-
-			local totalPlayers = table.getn(tidChanges)
-			
-			--	GDDecay requires special handling; we can't print the name of all guild members!
-			if desc == "GDDecay" then
-				local totalDKP = 0
-				for f = 1, totalPlayers, 1 do
-					local r2 = tidChanges[f]
-					local name = r2[1]
-					local dkp = r2[2]
-					--	Remember that DKP is negative here!
-					totalDKP = totalDKP + abs(tonumber(dkp))
-				end
-				
-				rcEcho ("* Total DKP removed: ".. totalDKP)
-				rcEcho ("* Players affected: ".. totalPlayers)
-				rcEcho ("* Average per player: ".. floor(totalDKP / totalPlayers))
-				return
-			end
-			
-			if totalPlayers == 1 then			
-				for f = 1, totalPlayers, 1 do
-					local r2 = tidChanges[f]
-					local name = r2[1]
-					local dkp = r2[2]
-
-					rcEcho ("* "..name.." --> "..dkp)
-				end
-				return
-			end
-
-
-			--	List multiple player data:
-			local output = ""
-			local outputCount = 0
-			local dkpValuePrinted = false
-			
-			local sortedList = sortTableAscending(tidChanges, 1)			
-			for f = 1, totalPlayers, 1 do			
-				local r2 = sortedList[f]
-				local name = r2[1]
-				local dkp = r2[2]
-				
-				if not dkpValuePrinted then				
-					rcEcho ("  DKP per player: "..dkp..", total players affected: ".. totalPlayers)
-					dkpValuePrinted = true
-				end
-				
-				if output == "" then
-					output = "* "..name
-				else
-					output = output..", "..name
-				end
-				
-				outputCount = outputCount + 1
-				if outputCount >= TRANSACTION_PLAYERS_PER_LINE then
-					rcEcho (output)
-					output = ""					
-					outputCount = 0
-				end
-			end
-			if output then
-				rcEcho (output)
-			end
-			return
-		end
-	end
-	
-	GuildDKP_Echo ("Transaction with TID=<"..transactionID.."> was not found.")
-end
-
---[[
-	Undo a transaction.
-	This must be called using Callback functions.
-	Also, offline members bust be shown in order to be able to restore DKP correctly for all.
-	The transaction is set in UNDONE state, and the DKP is reverted.
-	Only transactions in ACTIVE state can be undone.
-]]
-function undoTransaction(transactionID)
-
-	if not GetGuildRosterShowOffline() then
-		GuildDKP_Echo("Undo cancelled: You need to enable Offline Guild Members in the guild roster first.")
-		return
-	end
-
-	for n = 1, table.getn(transactionLog), 1 do
-		local rec = transactionLog[n]
-		local timestamp = rec[1]
-		local tid = rec[2]
-		local author = rec[3]
-		local desc = rec[4]
-		local state = rec[5]
-		local tidChanges = rec[6]
-		
-		if tonumber(tid) == tonumber(transactionID) then		
-			if state == TRANSACTION_STATE_ROLLEDBACK then
-				GuildDKP_Echo ("Transaction with TID="..transactionID.." is already rolled back.")
-				return
-			end
-			
-			transactionLog[tid][5] = TRANSACTION_STATE_ROLLEDBACK
-			
-			--	Now revert the DKP:
-			for f = 1, table.getn(tidChanges), 1 do
-				local r2 = tidChanges[f]
-				local name = r2[1]
-				local dkp = tonumber(r2[2])
-				
-				applyDKP(name, (-1 * dkp))				
-			end
-			
-			GuildDKP_Echo ("Transaction with TID="..transactionID.." was successfully rolled back.")
-			return
-		end
-
-	end
-	
-	GuildDKP_Echo ("Transaction with TID="..transactionID.." was not found.")
-end
-
---[[
-	Redo a transaction (cancel transaction rollback)
-	This must be called using Callback functions.
-	Also, offline members bust be shown in order to be able to restore DKP correctly for all.
-	The transaction is set in ACTIVE state, and the DKP is reverted.
-	Only transactions in ROLLEDBACK state can be re-done.
-]]
-function redoTransaction(transactionID)
-
-	if not GetGuildRosterShowOffline() then
-		GuildDKP_Echo("Redo cancelled: You need to enable Offline Guild Members in the guild roster first.")
-		return
-	end
-
-	for n = 1, table.getn(transactionLog), 1 do
-		local rec = transactionLog[n]
-		local timestamp = rec[1]
-		local tid = rec[2]
-		local author = rec[3]
-		local desc = rec[4]
-		local state = rec[5]
-		local tidChanges = rec[6]
-		
-		if tonumber(tid) == tonumber(transactionID) then
-			if state == TRANSACTION_STATE_ACTIVE then
-				GuildDKP_Echo ("Transaction with TID="..transactionID.." is already active.")
-				return
-			end
-			
-			transactionLog[tid][5] = TRANSACTION_STATE_ACTIVE
-			
-			--	Now re-apply the DKP:
-			for f = 1, table.getn(tidChanges), 1 do
-				local r2 = tidChanges[f]
-				local name = r2[1]
-				local dkp = tonumber(r2[2])
-				
-				applyDKP(name, dkp)
-			end
-			
-			GuildDKP_Echo ("Transaction with TID="..transactionID.." was successfully reactivated.")
-			return
-		end
-
-	end
-	
-	GuildDKP_Echo ("Transaction with TID="..transactionID.." was not found.")
-end
-
---[[
-	Add player <name> to the transaction, and remove his dkp.
-	Only transactions in ACTIVE state can include players.
-	Furthermore GDDecay or empty transactions cannot be included.
-]]
-function includePlayerInTransaction(transactionID, playername)
-
-	if not GetGuildRosterShowOffline() then
-		GuildDKP_Echo("Player include cancelled: You need to enable Offline Guild Members in the guild roster first.")
-		return
-	end
-
-	playername = UCFirst(playername)
-
-	for n = 1, table.getn(transactionLog), 1 do
-		local rec = transactionLog[n]
-		local timestamp = rec[1]
-		local tid = rec[2]
-		local author = rec[3]
-		local desc = rec[4]
-		local state = rec[5]
-		local tidChanges = rec[6]
-		
-		--	Find transaction to include player to:
-		if tonumber(tid) == tonumber(transactionID) then
-			if state == TRANSACTION_STATE_ROLLEDBACK then
-				GuildDKP_Echo ("Transaction with TID="..transactionID.." is rolled back - player cannot be included.")
-				return
-			end
-			
-			if desc == "GDDecay" then
-				GuildDKP_Echo ("Transaction with TID="..transactionID.." is a GDDecay transaction - player cannot be included.")
-				return
-			end			
-
-			local playerCnt = table.getn(tidChanges)
-			if playerCnt == 0 then
-				GuildDKP_Echo("Player include cancelled: You cannot add a player to an empty transaction.")
-				return
-			end
-			
-			for f = 1, playerCnt, 1 do
-				local r2 = tidChanges[f]
-				local name = r2[1]
-				if name and UCFirst(name) == playername then
-					GuildDKP_Echo("Player include cancelled: "..playername.." is already in the transaction.")
-					return				
-				end
-			end
-					
-			local tidData = tidChanges[1]
-			local dkp = tidData[2]
-
-			applyDKP(playername, tonumber(dkp))
-					
-			tidChanges[playerCnt + 1] = { UCFirst(playername), dkp }
-
-			GuildDKP_Echo (playername.." was added to the transaction with TID="..transactionID.." for "..dkp.." DKP.")
-			return
-		end
-
-	end
-	
-	GuildDKP_Echo ("Transaction with TID="..transactionID.." was not found.")
-end
-
---[[
-	Remove player <name> from the transaction, and reapply his dkp.
-	Only transactions in ACTIVE state can exclude players.
-	Furthermore GDDecay transactions cannot be excluded.
-]]
-function excludePlayerInTransaction(transactionID, playername)
-
-	if not GetGuildRosterShowOffline() then
-		GuildDKP_Echo("Player exclude cancelled: You need to enable Offline Guild Members in the guild roster first.")
-		return
-	end
-
-	playername = UCFirst(playername)
-
-	for n = 1, table.getn(transactionLog), 1 do
-		local rec = transactionLog[n]
-		local timestamp = rec[1]
-		local tid = rec[2]
-		local author = rec[3]
-		local desc = rec[4]
-		local state = rec[5]
-		local tidChanges = rec[6]
-		
-		if tonumber(tid) == tonumber(transactionID) then
-			if state == TRANSACTION_STATE_ROLLEDBACK then
-				GuildDKP_Echo ("Transaction with TID="..transactionID.." is rolled back - player cannot be excluded.")
-				return
-			end
-			
-			if desc == "GDDecay" then
-				GuildDKP_Echo ("Transaction with TID="..transactionID.." is a GDDecay transaction - player cannot be excluded.")
-				return
-			end			
-		
-			--	Now find the player to exclude:
-			for f = 1, table.getn(tidChanges), 1 do
-				local r2 = tidChanges[f]
-				local name = r2[1]
-				local dkp = tonumber(r2[2])
-				
-				if name and UCFirst(name) == playername then
-					applyDKP(name, (-1 * dkp))					
-					
-					tidChanges[f] = {}
-					rec[6] = packTable(tidChanges)
-					transactionLog[n] = rec
-					
-					GuildDKP_Echo (name.." was removed from transaction with TID="..transactionID..".")
-					return
-				end				
-			end
-			
-			GuildDKP_Echo (name.." was not found in the transaction with TID="..transactionID..".")
-			return
-		end
-	end
-	
-	GuildDKP_Echo ("Transaction with TID="..transactionID.." was not found.")
-end
-
---[[
-	Synchronize the local transaction log with other clients.
-	This is done in a two-step approach:
-	- step 1:
-		A TX_SYNCINIT is sent to all clients. Each clients now responds
-		back (RX_SYNCINIT) with lowest and hignest TID.
-		This shows how many transactions each client contains.
-	- step 2:
-		The client picks the response with most transactions in it,
-		and will ask that client for all transactions.
-		Note that step 2 will require a delay to allow all clients to
-		respond back (a 2 second delay should be fine).
-
-	Transactions are merged into existing transaction log, there is therefore
-	no need to delete log fiest.
-	This method should be called when GuildDKP is launched, or player enters
-	a raid to make sure transactionlog is always updated.
-]]
-function synchronizeTransactionLog()
-	--	This initiates step 1: send a TX_SYNCINIT to all clients.
-	--	TODO: Check if we're already requesting SYNC - abort with an error if so.
-	
-	synchronizationState = 1	-- Step 1: Initialize
-	
-	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "TX_SYNCINIT##", "RAID")
-	
-	--GuildDKP_AddTimer(HandleRXSyncInitDone, 3)	
-	AddMimmaTimer(HandleRXSyncInitDone, 3)	
-end
-
-function generateColouredDKP(dkp)
-	local output = COLOUR_DKP_PLUS
-	if tonumber(dkp) < 0 then
-		output = COLOUR_DKP_MINUS
-	end
-	output = output .. dkp .. COLOUR_CHAT
-	return output
 end
 
 --[[
