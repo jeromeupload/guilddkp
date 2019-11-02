@@ -88,7 +88,7 @@ SLASH_GUILDDKP_PLUS_DKP1 = "/gdadd"
 SLASH_GUILDDKP_PLUS_DKP2 = "/gdp"
 SlashCmdList["GUILDDKP_PLUS_DKP"] = function(msg)
 	local _, _, name, dkp = string.find(msg, "(%S*)%s*(%d*).*")
-	if isInRaid() then
+	if isInRaid() and CanEditOfficerNote() then
 		if dkp and name and tonumber(dkp) then
 			local res = applyDKP(UCFirst(name), dkp)
 			if res then
@@ -110,7 +110,7 @@ SLASH_GUILDDKP_MINUS_DKP2 = "/gdm"
 SlashCmdList["GUILDDKP_MINUS_DKP"] = function(msg)
 	local _, _, name, dkp = string.find(msg, "(%S*)%s*(%d*).*")
 
-	if isInRaid() then
+	if isInRaid() and CanEditOfficerNote() then
 		if dkp and name and tonumber(dkp) then
 			local res = applyDKP(UCFirst(name), (-1 * dkp))
 			if res then
@@ -132,7 +132,7 @@ SLASH_GUILDDKP_ADD_RAID2 = "/addraid"
 SlashCmdList["GUILDDKP_ADD_RAID"] = function(msg)
 	local _, _, dkp = string.find(msg, "(%d*).*")
 
-	if isInRaid() then
+	if isInRaid() and CanEditOfficerNote() then
 		if dkp and tonumber(dkp) then
 			addRaidDKP(dkp, "GDAddRaid")
 			SendChatMessage(string.format("%s DKP has been added to all players in raid", dkp), "RAID_WARNING")
