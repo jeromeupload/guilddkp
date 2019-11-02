@@ -97,9 +97,9 @@ end
 
 --[[
 	Add DKP to a specific char and announce in /RW
-	Syntax: /gdplus <player> <dkp value>
+	Syntax: /gdadd <player> <dkp value>
 ]]
-SLASH_GUILDDKP_PLUS_DKP1 = "/gdplus"
+SLASH_GUILDDKP_PLUS_DKP1 = "/gdadd"
 SLASH_GUILDDKP_PLUS_DKP2 = "/gdp"
 SlashCmdList["GUILDDKP_PLUS_DKP"] = function(msg)
 	local _, _, name, dkp = string.find(msg, "(%S*)%s*(%d*).*")
@@ -109,7 +109,7 @@ SlashCmdList["GUILDDKP_PLUS_DKP"] = function(msg)
 			SendChatMessage(string.format("%s has been awarded %s DKP", UCFirst(name), dkp), "RAID_WARNING")
 			requestUpdateRoster()
 		else
-			GuildDKP_Echo("Syntax: /gdplus <name> <dkp value>")
+			GuildDKP_Echo("Syntax: /gdadd <name> <dkp value>")
 		end
 	end
 end
@@ -278,7 +278,7 @@ SlashCmdList["GUILDDKP_HELP"] = function()
 	GuildDKP_Echo("/gdversion --  Request version information (if any) for all players in raid.")
 	GuildDKP_Echo("")
 	GuildDKP_Echo("DKP control:")
-	GuildDKP_Echo("/gdplus <player> <amount>  --  Add <amount> DKP to <player> and announce in raid.")
+	GuildDKP_Echo("/gdadd <player> <amount>  --  Add <amount> DKP to <player> and announce in raid.")
 	GuildDKP_Echo("/gdminus <player> <amount>  --  Subtract <amount> DKP from <player> and announce in raid.")
 	GuildDKP_Echo("/gdaddraid <amount>  --  Add <amount> DKP to all players in the raid.")
 	GuildDKP_Echo("/gdsubtractraid <amount>  --  Subtract <amount< DKP from all players in the raid.")
