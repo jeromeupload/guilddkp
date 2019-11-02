@@ -14,27 +14,17 @@ GDKP_DkpStringLength = 0
 local useOfficerNotes = true
 -- Max number of players shown in /gdclass output; used to stop spam when displaying guild top X
 local maxClassMembersShown = 10
+-- Min/Max amount of dkp
+local maxDKP = 600
+local minDKP = 0
 
 local RAID_CHANNEL = "RAID"
-local WARN_CHANNEL = "RAID_WARNING"
 local GUILD_CHANNEL = "GUILD"
 local OFFICER_CHANNEL = "OFFICER"
 local CHAT_END = "|r"
 local COLOUR_CHAT = "|c8040A0F8"
 local COLOUR_INTRO  = "|c8000F0F0"
 local GUILDDKP_PREFIX = "GuildDKPv1"
-
---	These colours are only used local; don't want to risk a ban :-)
-local COLOUR_DKP_MINUS = "|c80FF3030"
-local COLOUR_DKP_PLUS = "|c8010FF10"
-
---	# of transactions displayed in /gdlog
-local TRANSACTION_LIST_SIZE = 5
---	# of player names displayed per line when posting transaction log into guild chat
-local TRANSACTION_PLAYERS_PER_LINE = 8
-
-local TRANSACTION_STATE_ROLLEDBACK = 0
-local TRANSACTION_STATE_ACTIVE = 1
 
 local GuildDKPFrame = CreateFrame("Frame")
 
@@ -48,11 +38,6 @@ local raidRoster = {}
 local guildRoster = {}
 --	List of valid class names
 local classNames = { "Druid", "Hunter", "Mage", "Warrior", "Warlock", "Paladin", "Priest", "Rogue", "Shaman" }
---  Transaction log: Contains a list of { timestamp, tid, description, state, { names, dkp } }
---	Transaction state: 0=Rolled back, 1=Active (default), 
-local transactionLog = {}
---	Current transactionID, starts out as 0 (=none).
-local currentTransactionID = 0
 --	Sync.state: 0=idle, 1=initializing, 2=synchronizing
 local synchronizationState = 0
 --	Hold RX_SYNCINIT responses when querying for a client to sync.
@@ -89,42 +74,29 @@ SlashCmdList["GUILDDKP_CLASS"] = function(msg)
 	if not checkClass(classname) then
 		GuildDKP_Echo("'"..UCFirst(classname).."' is not a valid class.")
 		return
-	end	
-	
-	if canReadNotes() then
-		if isInRaid(true) then
-			if table.getn(raidRoster) > 0 then
-				displayDKPForRaidingClass(classname)
-			else
-				AddJob( function(job) displayDKPForRaidingClass(job[2]) end, classname, "_" )
-				requestUpdateRoster()   
-			end
-		else
-			if table.getn(guildRoster) > 0 then
-				displayDKPForGuildedClass(classname)
-			else
-				AddJob( function(job) displayDKPForGuildedClass(job[2]) end, classname, "_" )
-				requestUpdateRoster()
-			end
-		end
 	end
+
+	displayDKPForGuildedClass(classname)
+	requestUpdateRoster()
 end
 
 --[[
 	Add DKP to a specific char and announce in /RW
-	Syntax: /gdplus <player> <dkp value>
+	Syntax: /gdadd <player> <dkp value>
 ]]
-SLASH_GUILDDKP_PLUS_DKP1 = "/gdplus"
+SLASH_GUILDDKP_PLUS_DKP1 = "/gdadd"
 SLASH_GUILDDKP_PLUS_DKP2 = "/gdp"
 SlashCmdList["GUILDDKP_PLUS_DKP"] = function(msg)
 	local _, _, name, dkp = string.find(msg, "(%S*)%s*(%d*).*")
-	if isInRaid() then
+	if isInRaid() and CanEditOfficerNote() then
 		if dkp and name and tonumber(dkp) then
-			applyDKP(UCFirst(name), dkp)
-			SendChatMessage(string.format("%s has been awarded %s DKP", UCFirst(name), dkp), "RAID_WARNING")
-			requestUpdateRoster()
+			local res = applyDKP(UCFirst(name), dkp)
+			if res then
+				SendChatMessage(string.format("%s has been awarded %s DKP", UCFirst(name), dkp), "RAID_WARNING")
+				requestUpdateRoster()
+			end
 		else
-			GuildDKP_Echo("Syntax: /gdplus <name> <dkp value>")
+			GuildDKP_Echo("Syntax: /gdadd <name> <dkp value>")
 		end
 	end
 end
@@ -138,11 +110,13 @@ SLASH_GUILDDKP_MINUS_DKP2 = "/gdm"
 SlashCmdList["GUILDDKP_MINUS_DKP"] = function(msg)
 	local _, _, name, dkp = string.find(msg, "(%S*)%s*(%d*).*")
 
-	if isInRaid() then
+	if isInRaid() and CanEditOfficerNote() then
 		if dkp and name and tonumber(dkp) then
-			applyDKP(UCFirst(name), (-1 * dkp))
-			SendChatMessage(string.format("%s DKP has been subtracted from %s", dkp, UCFirst(name)), "RAID_WARNING")
-			requestUpdateRoster()
+			local res = applyDKP(UCFirst(name), (-1 * dkp))
+			if res then
+				SendChatMessage(string.format("%s DKP has been subtracted from %s", dkp, UCFirst(name)), "RAID_WARNING")
+				requestUpdateRoster()
+			end
 		else
 			GuildDKP_Echo("Syntax: /gdminus <name> <dkp value>")
 		end
@@ -158,7 +132,7 @@ SLASH_GUILDDKP_ADD_RAID2 = "/addraid"
 SlashCmdList["GUILDDKP_ADD_RAID"] = function(msg)
 	local _, _, dkp = string.find(msg, "(%d*).*")
 
-	if isInRaid() then
+	if isInRaid() and CanEditOfficerNote() then
 		if dkp and tonumber(dkp) then
 			addRaidDKP(dkp, "GDAddRaid")
 			SendChatMessage(string.format("%s DKP has been added to all players in raid", dkp), "RAID_WARNING")
@@ -293,10 +267,9 @@ SlashCmdList["GUILDDKP_HELP"] = function()
 	GuildDKP_Echo("/gdversion --  Request version information (if any) for all players in raid.")
 	GuildDKP_Echo("")
 	GuildDKP_Echo("DKP control:")
-	GuildDKP_Echo("/gdplus <player> <amount>  --  Add <amount> DKP to <player> and announce in raid.")
+	GuildDKP_Echo("/gdadd <player> <amount>  --  Add <amount> DKP to <player> and announce in raid.")
 	GuildDKP_Echo("/gdminus <player> <amount>  --  Subtract <amount> DKP from <player> and announce in raid.")
 	GuildDKP_Echo("/gdaddraid <amount>  --  Add <amount> DKP to all players in the raid.")
-	GuildDKP_Echo("/gdsubtractraid <amount>  --  Subtract <amount< DKP from all players in the raid.")
 	GuildDKP_Echo("")
 end
 
@@ -311,58 +284,14 @@ end
 ]]
 function addRaidDKP(dkp, description)
 	local playerCount = GetNumGroupMembers()
-
+	local res
 	if playerCount then
 		for n=1,playerCount,1 do
 			local name, _, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(n)
-			applyDKP(name, dkp)
+			res = applyDKP(name, dkp)
 		end
 	end
-end
-
---[[
-	Subtract DKP from all (online) guilded raid members.
-]]
-function subtractRaidDKP(dkp, description)
-	local playerCount = GetNumGroupMembers()
-	
-	if playerCount then
-		for n=1,playerCount,1 do
-			local player, _, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(n)
-			local name = ""
-			local realm = ""
-			name, realm = player:match("([^,]+)%-([^,]+)")
-			GuildDKP_Echo( string.format("%s - %s : %s", name, realm, receiver))
-			applyDKP(name, -1 * dkp)
-		end	
-	end
-end
-
---[[
-	Get DKP belonging to a specific player.
-	Returns FALSE if player was not found. Players with no DKP will return 0.
-]]
-function getDKP(receiver)
-	local memberCount = GetNumGuildMembers()
-	local dkpValue = 0
-
-	for n=1,memberCount,1 do
-		local player, _, _, _, _, _, publicNote, officerNote = GetGuildRosterInfo(n)
-        local name = ""
-        local realm = ""
-        name, realm = player:match("([^,]+)%-([^,]+)")
-
-		local note = officerNote
-		if name == receiver then
-			local _, _, dkp = string.find(note, "<(-?%d*)>")
-
-			if dkp and tonumber(dkp)  then
-				dkpValue = (1 * dkp)
-			end
-			return dkpValue		
-		end
-   	end
-   	return false
+	return res
 end
 
 --[[
@@ -382,20 +311,26 @@ function applyDKP(receiver, dkpValue)
 		if name == receiver then
 			local _, _, dkp = string.find(note, "<(-?%d*)>")
 
-			if dkp and tonumber(dkp)  then
-				dkp = (1 * dkp) + dkpValue
-				note = string.gsub(note, "<(-?%d*)>", createDkpString(dkp), 1)
+			if dkp and tonumber(dkp) then
+				if tonumber(dkp) <= maxDKP and (tonumber(dkp) + tonumber(dkpValue)) <= maxDKP then
+					if (tonumber(dkp) + dkpValue) >= minDKP then
+						dkp = (1 * dkp) + dkpValue
+						note = string.gsub(note, "<(-?%d*)>", createDkpString(dkp), 1)
+					else
+						GuildDKP_Echo(name.." will get below 0 DKP. Aborting.")
+						return false
+					end
+				else
+					GuildDKP_Echo(name.." will exceed "..maxDKP.." DKP. Aborting.")
+					return false
+				end
 			else
 				dkp = dkpValue
 				note = note..createDkpString(dkp)
 			end
-			
-			if useOfficerNotes then
-				GuildRosterSetOfficerNote(n, note)
-			else			
-				GuildRosterSetPublicNote(n, note)
-			end
-			applyLocalDKP(name, dkp)
+
+			GuildRosterSetOfficerNote(n, note)
+
 			if tonumber(dkpValue) > 0 then
 				SendChatMessage(string.format("You have been rewarded with %s DKP", dkpValue), "WHISPER", "Common", name)
 			else
@@ -433,50 +368,6 @@ function createDkpString(dkp)
 end
 
 --[[
-	Apply DKP to local loaded list
-	Input: receiver, dkpadded
-]]
-function applyLocalDKP(receiver, dkpAdded)
-	for n=1, table.getn(raidRoster),1 do
-		local player = raidRoster[n]
-		local name = player[1]
-		local dkp = player[2]
-		local class = player[3]
-		local online = player[4]
-
-		if receiver == name then
-			if dkp then
-				dkp = dkp + dkpAdded
-			else
-				dkp = dkpAdded
-			end
-			raidRoster[n] = {name, dkp, class, online}
-			return
-		end
-	end
-end
-
---[[
-	Display DKP amount for a specific player (locally) in the raid
-]]
-function displayDKPForRaidingPlayer(receiver)
-	receiver = UCFirst(receiver)
-	local player = getRaidPlayer(receiver)
-	
-	if player then
-		local dkp = player[2]
-				
-		if dkp then
-			GuildDKP_Echo(receiver.." currently has "..dkp.." DKP.")
-		else
-			GuildDKP_Echo(receiver.." does not have any DKP.")
-		end
-	else
-		GuildDKP_Echo(receiver.." was not found in raid.")
-	end	
-end
-
---[[
 	Display DKP amount for a specific player (locally) in the guild
 ]]
 function displayDKPForGuildedPlayer(receiver)
@@ -490,66 +381,6 @@ function displayDKPForGuildedPlayer(receiver)
 	else
 		GuildDKP_Echo(receiver.." was not found in guild.")
 	end	
-end
-
---[[
-	Display DKP amount for a specific class (locally) in the raid
-	Input: class name
-	Output: (list of players with dkp directly to local screen)
-]]
-function displayDKPForRaidingClass(classname)
-	classname = UCFirst(classname)
-
-	local classMembers = {}
-	local classCount = 1
-	for n=1, table.getn(raidRoster),1 do
-		local player = raidRoster[n]
-		local name = player[1]
-		local dkp = player[2]
-		local class = player[3]
-		local online = player[4]
-
-		if class == classname then
-			classMembers[classCount] = {name, dkp, online}
-			classCount = classCount + 1
-		end
-	end
-
-	-- Sort the DKP list with highest DKP in top.
-	local doSort = true
-	while doSort do
-		doSort = false
-		for n=1,table.getn(classMembers) - 1,1 do
-			local a = classMembers[n]
-			local b = classMembers[n + 1]
-			if tonumber(a[2]) and tonumber(b[2]) and tonumber(a[2]) < tonumber(b[2]) then
-				classMembers[n] = b
-				classMembers[n + 1] = a
-				doSort = true
-			end
-		end
-	end
-
-	if table.getn(classMembers) > 0 then
-		for n=1,table.getn(classMembers),1 do
-			local rec = classMembers[n]
-			local name = rec[1]
-			local dkp = rec[2]
-			local online = rec[3]
-			
-			if not online then
-				name = name.." (Offline)"
-			end
-			
-			if dkp then
-				GuildDKP_Echo(name.." currently has "..dkp.." DKP.")
-			else
-				GuildDKP_Echo(name.." does not have any DKP.")
-			end		
-		end		
-	else
-		GuildDKP_Echo("No "..classname.."s was found in raid.")
-	end
 end
 
 --[[
@@ -568,10 +399,11 @@ function displayDKPForGuildedClass(classname)
 	
 	--	First get all players of the wanted class
 	for n=1,memberCount,1 do
-		local player = guildRoster[n]
-		local name = player[1]
-		local dkp = player[2]
-		local class = player[3]
+		local player, _, _, _, class, _, publicNote, officerNote = GetGuildRosterInfo(n)
+        local name = ""
+        local realm = ""
+        name, realm = player:match("([^,]+)%-([^,]+)")
+		local _, _, dkp = string.find(officerNote, "<(-?%d*)>")
 
 		if class == classname then
 			classCount = classCount + 1
