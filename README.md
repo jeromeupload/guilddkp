@@ -1,7 +1,7 @@
 # guilddkp
 Additions to the old GuildDKP to fit current release of WOW API.
 
-The main focus at this version (1.5.1) is the following functionality:  
+The main focus at this version (1.5.2) is the following functionality:  
   
 * /gdhelp                               - for help menu
 * /gddkp playername                     - for requesting DKP status of playername
