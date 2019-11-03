@@ -1,6 +1,6 @@
 ## Title: GuildDKP - guild DKP manager
 ## Notes: Manage DKP distribution for guild members.
-## Version: 1.5.4
+## Version: 1.5.5
 ## Author: Mimma @ VanillaGaming.org, Casper @ github.com/CasperGN/
 ## Interface: 11200
 ## SavedVariables: GDKP_DebugLevel, GDKP_DkpStringLength
