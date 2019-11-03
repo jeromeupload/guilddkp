@@ -302,7 +302,7 @@ function applyDKP(receiver, dkpValue)
 	local memberCount = GetNumGuildMembers()
 
 	for n=1,memberCount,1 do
-		local player, _, _, _, _, _, publicNote, officerNote = GetGuildRosterInfo(n)
+		local player, rank, _, _, _, _, publicNote, officerNote = GetGuildRosterInfo(n)
         local name = ""
         local realm = ""
         name, realm = player:match("([^,]+)%-([^,]+)")
@@ -310,6 +310,11 @@ function applyDKP(receiver, dkpValue)
 		local note = officerNote
 		if name == receiver then
 			local _, _, dkp = string.find(note, "<(-?%d*)>")
+
+			if rank == "Alt" then
+				GuildDKP_Echo(string.format("%s is of rank %s and will not receive DKP", name, rank))
+				return false
+			end
 
 			if dkp and tonumber(dkp) then
 				if tonumber(dkp) <= maxDKP and (tonumber(dkp) + tonumber(dkpValue)) <= maxDKP then
@@ -339,10 +344,7 @@ function applyDKP(receiver, dkpValue)
 				dkp = dkpValue
 				note = note..createDkpString(dkp)
 			end
-
 			GuildRosterSetOfficerNote(n, note)
-
-
 			return true
 		end
    	end
@@ -465,7 +467,7 @@ end
 --[[
 	Update the guild roster status cache: members and DKP.
 	Used to display DKP values for non-raiding members
-	(/gdclass and /gdstat)
+	(/gdclass and /gddkp)
 ]]
 function refreshGuildRoster()
 	local memberCount = GetNumGuildMembers()
@@ -546,25 +548,6 @@ function refreshRaidRoster()
 			end
 		end
 	end	
-end
-
---[[
-	Return the amount of DKP a specific player in the raid currently has.
-	Input: player name
-	Output: DKP value, or nil if player was not found.
-]]
-function getRaidPlayer(receiver)
-	for n=1, table.getn(raidRoster),1 do
-		local player, _, _, _, class, _, publicNote, officerNote, online = GetGuildRosterInfo(n)
-		local name = ""
-		local realm = ""
-		name, realm = player:match("([^,]+)%-([^,]+)")
-
-		if name == receiver then
-			return { name, dkp, class, online }
-		end
-	end
-	return nil
 end
 
 --[[

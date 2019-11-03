@@ -1,5 +1,5 @@
 # guilddkp
-Additions to the old GuildDKP to fit current release of WOW API.
+Additions to the original GuildDKP  by Mimma to fit current release of WOW API.
 
 The main focus at this version (1.5.2) is the following functionality:  
   
