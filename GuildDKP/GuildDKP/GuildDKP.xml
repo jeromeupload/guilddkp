@@ -1,8 +1,7 @@
 ﻿<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<Script file="GuildDKP.lua"/>
 	<Script file="MimmaTimers.lua"/>
-	<Script file="lib\Blizzard_GuildUI\Blizzard_GuildUI.lua"/>
-	
+
 	<Frame name="GuildDKPFrame">
 		<Scripts>
 			<OnLoad>
