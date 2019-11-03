@@ -44,6 +44,27 @@ local synchronizationState = 0
 local syncResults = {}
 
 --[[
+	UI additions
+]]
+SLASH_GUILDDKP_SHOW1 = "/gdshow"
+SlashCmdList["GUILDDKP_SHOW"] = function(msg)
+	Show()
+end
+
+SLASH_GUILDDKP_HIDE1 = "/gdhide"
+SlashCmdList["GUILDDKP_HIDE"] = function(msg)
+	Hide()
+end
+
+function Show()
+	GuildDKPUIFrame:Show()
+end
+
+function Hide()
+	GuildDKPUIFrame:Hide()
+end
+
+--[[
 	Display DKP for a specific user, or current user if no playername was given.
 	Syntax: /gddkp [<player>]
 ]]
@@ -270,6 +291,10 @@ SlashCmdList["GUILDDKP_HELP"] = function()
 	GuildDKP_Echo("/gdadd <player> <amount>  --  Add <amount> DKP to <player> and announce in raid.")
 	GuildDKP_Echo("/gdminus <player> <amount>  --  Subtract <amount> DKP from <player> and announce in raid.")
 	GuildDKP_Echo("/gdaddraid <amount>  --  Add <amount> DKP to all players in the raid.")
+	GuildDKP_Echo("")
+	GuildDKP_Echo("UI:")
+	GuildDKP_Echo("/gdshow			 --  Display GuildDKP UI.")
+	GuildDKP_Echo("/gdhide			 --  Hide GuildDKP UI.")
 	GuildDKP_Echo("")
 end
 
@@ -1072,5 +1097,3 @@ function OnChatMsgAddon(event, prefix, msg, channel, sender)
 		end
 	end
 end
-
-
