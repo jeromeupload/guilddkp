@@ -37,31 +37,87 @@ local raidRoster = {}
 --	List of {name,dkp,class} tables for players in the guild
 local guildRoster = {}
 --	List of valid class names
-local classNames = { "Druid", "Hunter", "Mage", "Warrior", "Warlock", "Paladin", "Priest", "Rogue", "Shaman" }
+local classNames = { "Druid", "Hunter", "Mage", "Warrior", "Warlock", "Priest", "Rogue", "Shaman" }
 --	Sync.state: 0=idle, 1=initializing, 2=synchronizing
 local synchronizationState = 0
 --	Hold RX_SYNCINIT responses when querying for a client to sync.
 local syncResults = {}
+-- Create the dropdown, and configure its appearance
+local dropDown = CreateFrame("FRAME", "GuildDKPDrop", UIParent, "UIDropDownMenuTemplate")
 
 --[[
 	UI additions
 ]]
 SLASH_GUILDDKP_SHOW1 = "/gdshow"
 SlashCmdList["GUILDDKP_SHOW"] = function(msg)
-	Show()
+	-- Get all guildies whom are not alts
+	local memberCount = GetNumGuildMembers()
+	local classMembers = {
+		["Druid"] = {},
+		["Hunter"] = {},
+		["Mage"] = {},
+		["Warrior"] = {},
+		["Warlock"] = {},
+		["Priest"] = {},
+		["Rogue"] = {},
+		["Shaman"] = {}
+	}
+	local playerDKP = {}
+	for n=1,memberCount,1 do
+		local player, rank, _, _, class, _, publicNote, officerNote = GetGuildRosterInfo(n)
+        local name = ""
+        local realm = ""
+        name, realm = player:match("([^,]+)%-([^,]+)")
+		local _, _, dkp = string.find(officerNote, "<(-?%d*)>")
+
+		if rank ~= "Alt" then
+			-- We have now verified that the players in not an alt, so we
+			-- insert the player and DKP amoun into the dictionary in the corresponding class key
+			table.insert(classMembers[class], name)
+			playerDKP[name] = dkp
+		end
+	end
+	dropDown:Show()
+	dropDown:SetPoint("CENTER")
+	dropDown:SetMovable(true)
+	dropDown:EnableMouse(true)
+	dropDown:RegisterForDrag("LeftButton")
+	dropDown:SetScript("OnDragStart", dropDown.StartMoving)
+	dropDown:SetScript("OnDragStop", dropDown.StopMovingOrSizing)
+	UIDropDownMenu_SetWidth(dropDown, 200)
+	UIDropDownMenu_SetText(dropDown, "GuildDKP")
+
+	-- Create and bind the initialization function to the dropdown menu
+	UIDropDownMenu_Initialize(dropDown, function(self, level, menuList)
+		local info = UIDropDownMenu_CreateInfo()
+		if (level or 1) == 1 then
+			for index,item in ipairs(classNames) do
+				info.text, info.menuList, info.hasArrow, info.notCheckable = item, item, true, true
+				UIDropDownMenu_AddButton(info)
+			end
+		elseif (level or 2) == 2 then
+			for key,val in pairs(classMembers) do
+				for index,name in ipairs(val) do
+					if key == menuList then
+						info.text, info.menuList, info.hasArrow, info.notCheckable = name, name, true, true
+						UIDropDownMenu_AddButton(info, level)
+					end
+				end
+			end
+		elseif (level or 3) == 3 then
+			for key,val in pairs(playerDKP) do
+				if key == menuList then
+					info.text, info.menuList, info.notCheckable = string.format("%s DKP", val), val, true
+					UIDropDownMenu_AddButton(info, level)
+				end
+			end
+		end
+	end)
 end
 
 SLASH_GUILDDKP_HIDE1 = "/gdhide"
 SlashCmdList["GUILDDKP_HIDE"] = function(msg)
-	Hide()
-end
-
-function Show()
-	GuildDKPUIFrame:Show()
-end
-
-function Hide()
-	GuildDKPUIFrame:Hide()
+	dropDown:Hide()
 end
 
 --[[
@@ -293,8 +349,8 @@ SlashCmdList["GUILDDKP_HELP"] = function()
 	GuildDKP_Echo("/gdaddraid <amount>  --  Add <amount> DKP to all players in the raid.")
 	GuildDKP_Echo("")
 	GuildDKP_Echo("UI:")
-	GuildDKP_Echo("/gdshow			 --  Display GuildDKP UI.")
-	GuildDKP_Echo("/gdhide			 --  Hide GuildDKP UI.")
+	GuildDKP_Echo("/gdshow   --  Display GuildDKP UI.")
+	GuildDKP_Echo("/gdhide   --  Hide GuildDKP UI.")
 	GuildDKP_Echo("")
 end
 
@@ -309,14 +365,12 @@ end
 ]]
 function addRaidDKP(dkp, description)
 	local playerCount = GetNumGroupMembers()
-	local res
 	if playerCount then
 		for n=1,playerCount,1 do
 			local name, _, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(n)
-			res = applyDKP(name, dkp)
+			applyDKP(name, dkp)
 		end
 	end
-	return res
 end
 
 --[[
