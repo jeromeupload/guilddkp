@@ -37,11 +37,88 @@ local raidRoster = {}
 --	List of {name,dkp,class} tables for players in the guild
 local guildRoster = {}
 --	List of valid class names
-local classNames = { "Druid", "Hunter", "Mage", "Warrior", "Warlock", "Paladin", "Priest", "Rogue", "Shaman" }
+local classNames = { "Druid", "Hunter", "Mage", "Warrior", "Warlock", "Priest", "Rogue", "Shaman" }
 --	Sync.state: 0=idle, 1=initializing, 2=synchronizing
 local synchronizationState = 0
 --	Hold RX_SYNCINIT responses when querying for a client to sync.
 local syncResults = {}
+-- Create the dropdown, and configure its appearance
+local dropDown = CreateFrame("FRAME", "GuildDKPDrop", UIParent, "UIDropDownMenuTemplate")
+
+--[[
+	UI additions
+]]
+SLASH_GUILDDKP_SHOW1 = "/gdshow"
+SlashCmdList["GUILDDKP_SHOW"] = function(msg)
+	-- Get all guildies whom are not alts
+	local memberCount = GetNumGuildMembers()
+	local classMembers = {
+		["Druid"] = {},
+		["Hunter"] = {},
+		["Mage"] = {},
+		["Warrior"] = {},
+		["Warlock"] = {},
+		["Priest"] = {},
+		["Rogue"] = {},
+		["Shaman"] = {}
+	}
+	local playerDKP = {}
+	for n=1,memberCount,1 do
+		local player, rank, _, _, class, _, publicNote, officerNote = GetGuildRosterInfo(n)
+        local name = ""
+        local realm = ""
+        name, realm = player:match("([^,]+)%-([^,]+)")
+		local _, _, dkp = string.find(officerNote, "<(-?%d*)>")
+
+		if rank ~= "Alt" then
+			-- We have now verified that the players in not an alt, so we
+			-- insert the player and DKP amoun into the dictionary in the corresponding class key
+			table.insert(classMembers[class], name)
+			playerDKP[name] = dkp
+		end
+	end
+	dropDown:Show()
+	dropDown:SetPoint("CENTER")
+	dropDown:SetMovable(true)
+	dropDown:EnableMouse(true)
+	dropDown:RegisterForDrag("LeftButton")
+	dropDown:SetScript("OnDragStart", dropDown.StartMoving)
+	dropDown:SetScript("OnDragStop", dropDown.StopMovingOrSizing)
+	UIDropDownMenu_SetWidth(dropDown, 200)
+	UIDropDownMenu_SetText(dropDown, "GuildDKP")
+
+	-- Create and bind the initialization function to the dropdown menu
+	UIDropDownMenu_Initialize(dropDown, function(self, level, menuList)
+		local info = UIDropDownMenu_CreateInfo()
+		if (level or 1) == 1 then
+			for index,item in ipairs(classNames) do
+				info.text, info.menuList, info.hasArrow, info.notCheckable = item, item, true, true
+				UIDropDownMenu_AddButton(info)
+			end
+		elseif (level or 2) == 2 then
+			for key,val in pairs(classMembers) do
+				for index,name in ipairs(val) do
+					if key == menuList then
+						info.text, info.menuList, info.hasArrow, info.notCheckable = name, name, true, true
+						UIDropDownMenu_AddButton(info, level)
+					end
+				end
+			end
+		elseif (level or 3) == 3 then
+			for key,val in pairs(playerDKP) do
+				if key == menuList then
+					info.text, info.menuList, info.notCheckable = string.format("%s DKP", val), val, true
+					UIDropDownMenu_AddButton(info, level)
+				end
+			end
+		end
+	end)
+end
+
+SLASH_GUILDDKP_HIDE1 = "/gdhide"
+SlashCmdList["GUILDDKP_HIDE"] = function(msg)
+	dropDown:Hide()
+end
 
 --[[
 	Display DKP for a specific user, or current user if no playername was given.
@@ -90,9 +167,8 @@ SlashCmdList["GUILDDKP_PLUS_DKP"] = function(msg)
 	local _, _, name, dkp = string.find(msg, "(%S*)%s*(%d*).*")
 	if isInRaid() and CanEditOfficerNote() then
 		if dkp and name and tonumber(dkp) then
-			local res = applyDKP(UCFirst(name), dkp)
+			local res = applyDKP(UCFirst(name), dkp, "single")
 			if res then
-				SendChatMessage(string.format("%s has been awarded %s DKP", UCFirst(name), dkp), "RAID_WARNING")
 				requestUpdateRoster()
 			end
 		else
@@ -112,9 +188,8 @@ SlashCmdList["GUILDDKP_MINUS_DKP"] = function(msg)
 
 	if isInRaid() and CanEditOfficerNote() then
 		if dkp and name and tonumber(dkp) then
-			local res = applyDKP(UCFirst(name), (-1 * dkp))
+			local res = applyDKP(UCFirst(name), (-1 * dkp), "single")
 			if res then
-				SendChatMessage(string.format("%s DKP has been subtracted from %s", dkp, UCFirst(name)), "RAID_WARNING")
 				requestUpdateRoster()
 			end
 		else
@@ -271,6 +346,10 @@ SlashCmdList["GUILDDKP_HELP"] = function()
 	GuildDKP_Echo("/gdminus <player> <amount>  --  Subtract <amount> DKP from <player> and announce in raid.")
 	GuildDKP_Echo("/gdaddraid <amount>  --  Add <amount> DKP to all players in the raid.")
 	GuildDKP_Echo("")
+	GuildDKP_Echo("UI:")
+	GuildDKP_Echo("/gdshow   --  Display GuildDKP UI.")
+	GuildDKP_Echo("/gdhide   --  Hide GuildDKP UI.")
+	GuildDKP_Echo("")
 end
 
 --  *******************************************************
@@ -284,21 +363,19 @@ end
 ]]
 function addRaidDKP(dkp, description)
 	local playerCount = GetNumGroupMembers()
-	local res
 	if playerCount then
 		for n=1,playerCount,1 do
 			local name, _, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(n)
-			res = applyDKP(name, dkp)
+			applyDKP(name, dkp, "raid")
 		end
 	end
-	return res
 end
 
 --[[
 	Apply DKP to a specific player.
 	Returns FALSE if DKP could not be applied.
 ]]
-function applyDKP(receiver, dkpValue)
+function applyDKP(receiver, dkpValue, callFunc)
 	local memberCount = GetNumGuildMembers()
 
 	for n=1,memberCount,1 do
@@ -315,17 +392,11 @@ function applyDKP(receiver, dkpValue)
 				GuildDKP_Echo(string.format("%s is of rank %s and will not receive DKP", name, rank))
 				return false
 			end
-
 			if dkp and tonumber(dkp) then
 				if tonumber(dkp) <= maxDKP and (tonumber(dkp) + tonumber(dkpValue)) <= maxDKP then
 					if (tonumber(dkp) + dkpValue) >= minDKP then
 						dkp = (1 * dkp) + dkpValue
 						note = string.gsub(note, "<(-?%d*)>", createDkpString(dkp), 1)
-						if tonumber(dkpValue) > 0 then
-							SendChatMessage(string.format("You have been rewarded with %s DKP", dkpValue), "WHISPER", "Common", name)
-						else
-							SendChatMessage(string.format("%s DKP has been subtracted you", (-1 * tonumber(dkpValue))), "WHISPER", "Common", name)
-						end
 					else
 						GuildDKP_Echo(name.." will get below 0 DKP. Aborting.")
 						return false
@@ -334,7 +405,6 @@ function applyDKP(receiver, dkpValue)
 
 					if tonumber(dkp) ~= maxDKP then
 						note = string.gsub(note, "<(-?%d*)>", createDkpString(600), 1)
-						SendChatMessage("Your DKP is now at 600.", "WHISPER", "Common", name)
 					else
 						GuildDKP_Echo(name.." will exceed "..maxDKP.." DKP. Aborting.")
 						return false
@@ -345,6 +415,13 @@ function applyDKP(receiver, dkpValue)
 				note = note..createDkpString(dkp)
 			end
 			GuildRosterSetOfficerNote(n, note)
+			if callFunc == "single" then
+				if tonumber(dkpValue) > 0 then
+					SendChatMessage(string.format("You have been rewarded with %s DKP", dkpValue), "WHISPER", "Common", name)
+				else
+					SendChatMessage(string.format("%s DKP has been subtracted you", (-1 * tonumber(dkpValue))), "WHISPER", "Common", name)
+				end
+			end
 			return true
 		end
    	end
@@ -1072,5 +1149,3 @@ function OnChatMsgAddon(event, prefix, msg, channel, sender)
 		end
 	end
 end
-
-

@@ -9,6 +9,8 @@ The main focus at this version (1.5.2) is the following functionality:
 * /gdadd playername int:amount          - for adding int:amount to playername | no default
 * /gdminus playername int:amount        - for subtracting int:amount from playername | no default
 * /gdclass class                        - for getting top 10 players and their dkp standing | default class is own class
+* /gdshow                               - for showing GuildDKP UI
+* /gdhide                               - for hiding GuildDKP UI
 
 TODO:
 1. Ensure only officers can do DKP control functions
