@@ -866,180 +866,6 @@ function GuildDKP_debug(msg)
 	end
 end
 
---[[
-	Respond to a TX_VERSION command.
-	Input:
-		msg is the raw message
-		sender is the name of the message sender.
-	We should whisper this guy back with our current version number.
-	We therefore generate a response back (RX) in raid with the syntax:
-	GuildDKP:<sender (which is actually the receiver!)>:<version number>
-]]
-local function HandleTXVersion(message, sender)
-	local response = GetAddOnMetadata("GuildDKP", "Version")
-	
-	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "RX_VERSION#"..response.."#"..sender, "RAID")
-end
-
---[[
-	A version response (RX) was received. The version information is displayed locally.
-]]
-local function HandleRXVersion(message, sender)
-	local out = "".. sender .." is using GuildDKP version ".. message
-	GuildDKP_Echo(out)
-end
-
---[[
-	TX_UPDATE: A transaction was broadcasted. Add transaction details to transactions list.
-]]
-local function HandleTXUpdate(message, sender)
-	--	Message was from SELF, no need to update transactions since I made them already!
-	if (sender == UnitName("player")) then
-		return
-	end
-
-	local _, _, timestamp, tid, author, description, transstatus, name, dkp = string.find(message, "([^/]*)/([0-9]*)/([^/]*)/([^/]*)/([0-9]*)/([^/]*)/([^/]*)")
-
-	tid = tonumber(tid)
-
-	local transaction = transactionLog[tid]
-	if not transaction then
-		transaction = { timestamp, tid, author, description, transstatus, {} }
-	end
-	
-	--	List of transaction lines contained in this transaction ("name=dkp" entries)
-	local transactions = transaction[6]
-	local count = table.getn(transactions)
-	transactions[count + 1] = { name, dkp }
-	transaction[6] = transactions
-	
-	transactionLog[tid] = transaction
-
-	-- Make sure to update next transactionid
-	if currentTransactionID < tid then
-		currentTransactionID = tid
-	end
-
-end
-
---	Clients must return the highest transaction ID they own in RX_SYNCINIT
-function HandleTXSyncInit(message, sender)
-	--	Message was from SELF, no need to return RX_SYNCINIT
-	if (sender == UnitName("player")) then
-		return
-	end
-
-	syncResults = {}
-	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCINIT#"..currentTransactionID.."#"..sender, "RAID")
-end
-
---Handle RX_SYNCINIT responses from clients
-function HandleRXSyncInit(message, sender)
-	--	Check we are still in TX_SYNCINIT state
-	if not (synchronizationState == 1) then
-		return
-	end
-
-	local maxTid = tonumber(message)
-	local syncIndex = table.getn(syncResults) + 1
-	
-	syncResults[syncIndex] = { sender, message }
-end
-
---	This is called by the timer when responses are no longer accepted
-function HandleRXSyncInitDone()
-	synchronizationState = 2
-	local maxTid = 0
-	local maxName = ""
-
-	for n = 1, table.getn(syncResults), 1 do
-		local res = syncResults[n]
-		local tid = tonumber(res[2])
-		if(tid > maxTid) then
-			maxTid = tid
-			maxName = res[1]
-		end
-	end
-
-	--	No transactions was found, nothing to sync.
-	if maxTid == 0 then
-		synchronizationState = 0
-	end
-
-	if maxTid > currentTransactionID then
-		currentTransactionID = maxTid
-	end
-
-	--	Now request transaction synchronization from selected target
-	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "TX_SYNCTRAC##"..maxName, "RAID")	
-end
-
---	Client is requested to sync transaction log with <sender>
-function HandleTXSyncTransaction(message, sender)
-	--	Iterate over transactions
-	for n = 1, table.getn(transactionLog), 1 do
-		local rec = transactionLog[n]
-		local timestamp = rec[1]
-		local tid = rec[2]
-		local author = rec[3]
-		local desc = rec[4]
-		local state = rec[5]
-		local tidChanges = rec[6]
-
-		--	Iterate over transaction lines
-		for f = 1, table.getn(tidChanges), 1 do
-			local change = tidChanges[f]
-			local name = change[1]
-			local dkp = change[2]
-			
-			local response = timestamp.."/"..tid.."/"..author.."/"..desc.."/"..state.."/"..name.."/"..dkp
-			
-			C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCTRAC#"..response.."#"..sender, "RAID")				
-		end
-	end
-	
-	--	Last, send an EOF to signal all transactions were sent.
-	C_ChatInfo.SendAddonMessage(GUILDDKP_PREFIX, "RX_SYNCTRAC#EOF#"..sender, "RAID")				
-end
-
---	Received a sync'ed transaction - merge this with existing transaction log.
-function HandleRXSyncTransaction(message, sender)
-	if message == "EOF" then
-		synchronizationState = 0
-		return
-	end
-
-	local _, _, timestamp, tid, author, description, transstatus, name, dkp = string.find(message, "([^/]*)/([0-9]*)/([^/]*)/([^/]*)/([0-9]*)/([^/]*)/([^/]*)")
-
-	tid = tonumber(tid)
-
-	local transaction = transactionLog[tid]
-	if not transaction then
-		transaction = { timestamp, tid, author, description, transstatus, {} }
-	end
-
-	local transactions = transaction[6]
-	local tracCount = table.getn(transactions)
-
-	--	Check if this transaction line does already exist in transaction
-	for f = 1, tracCount, 1 do
-		local trac = transactions[f]
-		local currentName = trac[1]
-		local currentDkp = trac[2]
-
-		--	This entry already exists - no need to process further.
-		if currentName == name then
-			return
-		end
-	end
-
-	--	If we end here, then the transaction does not exist in our transaction log.
-	--	Create entry:
-	transactions[tracCount + 1] = { name, dkp }
-	transaction[6] = transactions
-	transactionLog[tid] = transaction
-end
-
 --  *******************************************************
 --
 --	Job Queue Functions
@@ -1080,10 +906,6 @@ function GuildDKP_OnLoad(self)
 
 	SetGuildRosterShowOffline(true)
 	requestUpdateRoster()
-	
-	if isInRaid(true) then	
-		synchronizeTransactionLog()
-	end
 end
 
 function GuildDKP_OnEvent(event)
@@ -1091,21 +913,11 @@ function GuildDKP_OnEvent(event)
 		OnChatMsgAddon(event, arg1, arg2, arg3, arg4, arg5)
 	elseif (event == "GUILD_ROSTER_UPDATE") then
 		OnGuildRosterUpdate()
-	elseif (event == "RAID_ROSTER_UPDATE") then
-		OnRaidRosterUpdate(event, arg1, arg2, arg3, arg4, arg5)
 	end
 end
 
 function OnGuildRosterUpdate()
 	handleGuildRosterUpdate()
-end
-
-function OnRaidRosterUpdate(event, arg1, arg2, arg3, arg4, arg5)
-	if isInRaid(true) then
-		synchronizeTransactionLog()
-	else
-		transactionLog = {}
-	end
 end
  
 function OnChatMsgAddon(event, prefix, msg, channel, sender)
