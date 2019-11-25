@@ -11,6 +11,3 @@ The main focus at this version (1.5.2) is the following functionality:
 * /gdclass class                        - for getting top 10 players and their dkp standing | default class is own class
 * /gdshow                               - for showing GuildDKP UI
 * /gdhide                               - for hiding GuildDKP UI
-
-TODO:
-1. Ensure only officers can do DKP control functions
