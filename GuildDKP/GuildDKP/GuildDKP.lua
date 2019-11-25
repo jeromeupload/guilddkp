@@ -906,10 +906,6 @@ function GuildDKP_OnLoad(self)
 
 	SetGuildRosterShowOffline(true)
 	requestUpdateRoster()
-	
-	if isInRaid(true) then	
-		synchronizeTransactionLog()
-	end
 end
 
 function GuildDKP_OnEvent(event)
@@ -917,21 +913,11 @@ function GuildDKP_OnEvent(event)
 		OnChatMsgAddon(event, arg1, arg2, arg3, arg4, arg5)
 	elseif (event == "GUILD_ROSTER_UPDATE") then
 		OnGuildRosterUpdate()
-	elseif (event == "RAID_ROSTER_UPDATE") then
-		OnRaidRosterUpdate(event, arg1, arg2, arg3, arg4, arg5)
 	end
 end
 
 function OnGuildRosterUpdate()
 	handleGuildRosterUpdate()
-end
-
-function OnRaidRosterUpdate(event, arg1, arg2, arg3, arg4, arg5)
-	if isInRaid(true) then
-		synchronizeTransactionLog()
-	else
-		transactionLog = {}
-	end
 end
  
 function OnChatMsgAddon(event, prefix, msg, channel, sender)
