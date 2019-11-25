@@ -167,9 +167,8 @@ SlashCmdList["GUILDDKP_PLUS_DKP"] = function(msg)
 	local _, _, name, dkp = string.find(msg, "(%S*)%s*(%d*).*")
 	if isInRaid() and CanEditOfficerNote() then
 		if dkp and name and tonumber(dkp) then
-			local res = applyDKP(UCFirst(name), dkp)
+			local res = applyDKP(UCFirst(name), dkp, "single")
 			if res then
-				SendChatMessage(string.format("%s has been awarded %s DKP", UCFirst(name), dkp), "RAID_WARNING")
 				requestUpdateRoster()
 			end
 		else
@@ -189,9 +188,8 @@ SlashCmdList["GUILDDKP_MINUS_DKP"] = function(msg)
 
 	if isInRaid() and CanEditOfficerNote() then
 		if dkp and name and tonumber(dkp) then
-			local res = applyDKP(UCFirst(name), (-1 * dkp))
+			local res = applyDKP(UCFirst(name), (-1 * dkp), "single")
 			if res then
-				SendChatMessage(string.format("%s DKP has been subtracted from %s", dkp, UCFirst(name)), "RAID_WARNING")
 				requestUpdateRoster()
 			end
 		else
@@ -368,7 +366,7 @@ function addRaidDKP(dkp, description)
 	if playerCount then
 		for n=1,playerCount,1 do
 			local name, _, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(n)
-			applyDKP(name, dkp)
+			applyDKP(name, dkp, "raid")
 		end
 	end
 end
@@ -377,7 +375,7 @@ end
 	Apply DKP to a specific player.
 	Returns FALSE if DKP could not be applied.
 ]]
-function applyDKP(receiver, dkpValue)
+function applyDKP(receiver, dkpValue, callFunc)
 	local memberCount = GetNumGuildMembers()
 
 	for n=1,memberCount,1 do
@@ -394,17 +392,11 @@ function applyDKP(receiver, dkpValue)
 				GuildDKP_Echo(string.format("%s is of rank %s and will not receive DKP", name, rank))
 				return false
 			end
-
 			if dkp and tonumber(dkp) then
 				if tonumber(dkp) <= maxDKP and (tonumber(dkp) + tonumber(dkpValue)) <= maxDKP then
 					if (tonumber(dkp) + dkpValue) >= minDKP then
 						dkp = (1 * dkp) + dkpValue
 						note = string.gsub(note, "<(-?%d*)>", createDkpString(dkp), 1)
-						if tonumber(dkpValue) > 0 then
-							SendChatMessage(string.format("You have been rewarded with %s DKP", dkpValue), "WHISPER", "Common", name)
-						else
-							SendChatMessage(string.format("%s DKP has been subtracted you", (-1 * tonumber(dkpValue))), "WHISPER", "Common", name)
-						end
 					else
 						GuildDKP_Echo(name.." will get below 0 DKP. Aborting.")
 						return false
@@ -413,7 +405,6 @@ function applyDKP(receiver, dkpValue)
 
 					if tonumber(dkp) ~= maxDKP then
 						note = string.gsub(note, "<(-?%d*)>", createDkpString(600), 1)
-						SendChatMessage("Your DKP is now at 600.", "WHISPER", "Common", name)
 					else
 						GuildDKP_Echo(name.." will exceed "..maxDKP.." DKP. Aborting.")
 						return false
@@ -424,6 +415,13 @@ function applyDKP(receiver, dkpValue)
 				note = note..createDkpString(dkp)
 			end
 			GuildRosterSetOfficerNote(n, note)
+			if callFunc == "single" then
+				if tonumber(dkpValue) > 0 then
+					SendChatMessage(string.format("You have been rewarded with %s DKP", dkpValue), "WHISPER", "Common", name)
+				else
+					SendChatMessage(string.format("%s DKP has been subtracted you", (-1 * tonumber(dkpValue))), "WHISPER", "Common", name)
+				end
+			end
 			return true
 		end
    	end
