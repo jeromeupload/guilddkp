@@ -1,12 +1,12 @@
 ﻿<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<Script file="GuildDKP.lua"/>
 	<Script file="MimmaTimers.lua"/>
-	
+
 	<Frame name="GuildDKPFrame">
 		<Scripts>
 			<OnLoad>
 				if (GuildDKP_OnLoad) then
-					GuildDKP_OnLoad();
+					GuildDKP_OnLoad(self);
 				end
 			</OnLoad>
 			<OnEvent>
@@ -14,9 +14,7 @@
 					GuildDKP_OnEvent(event);
 				end
 			</OnEvent>
-			<OnUpdate>
-				OnMimmaTimer(arg1)
-			</OnUpdate>
+			<OnUpdate function="OnMimmaTimer" />
 		</Scripts>
 	</Frame>
 </Ui>
